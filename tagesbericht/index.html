@@ -38,6 +38,10 @@
     .statusbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.stat{background:white;border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:24px}.stat span{color:var(--muted);font-size:13px}
     .toolbar{position:fixed;left:0;right:0;bottom:0;background:#ffffffee;backdrop-filter:blur(8px);border-top:1px solid var(--line);z-index:30}.toolbar .wrap{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px}.toolbar small{color:var(--muted)}
     .fileinput{display:none}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:#f9fafb;font-size:12px;color:#374151}.photo-list img{max-width:140px;max-height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;margin-bottom:6px}.photo-item{display:inline-block;margin:8px 12px 8px 0;vertical-align:top;max-width:160px}.photo-item input{font-size:12px;padding:6px}
+    .archiv-item{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
+    .archiv-item.current{border-color:var(--primary2);box-shadow:0 0 0 2px rgba(37,99,235,.18)}
+    .archiv-meta{font-size:15px}.archiv-meta b{font-size:16px}
+    .archiv-item .actions{margin:0}
     @media(max-width:800px){.grid{grid-template-columns:1fr}.col-12,.col-8,.col-6,.col-4,.col-3{grid-column:span 1}.checklist,.statusbar{grid-template-columns:1fr}.toolbar .wrap{display:block}.toolbar .actions{margin:8px 0 0}table{font-size:13px}}
     @media print{
       body{background:white}.no-print,nav,.toolbar,.actions,.tab{display:none!important}header{background:white;color:black;border-bottom:2px solid #111;padding:0 0 12px;margin:0 0 12px}header p{color:#333}main{max-width:none;margin:0;padding:0}.card{box-shadow:none;border:1px solid #999;border-radius:0;break-inside:avoid;padding:10px;margin-bottom:10px}section{display:block!important}.print-hide{display:none!important}input,textarea,select{border:0;padding:0}textarea{min-height:auto}th{background:#eee!important}.checkitem{border:0;padding:3px}.checklist{grid-template-columns:repeat(2,1fr)}.statusbar{display:none}.photo-list img{max-width:110px;max-height:80px}.signature{height:52px;border-bottom:1px solid #111;margin-top:24px}.pagebreak{break-before:page}
@@ -51,16 +55,25 @@
     <p>Web-App zum Erfassen, Speichern, Exportieren und Drucken von Tagesberichten.</p>
   </div>
 </header>
-<nav class="no-print"><div class="tabs" id="tabs"></div></nav>
+<nav class="no-print" id="nav"><div class="tabs" id="tabs"></div></nav>
 <main>
-  <div class="statusbar no-print">
+  <section id="archiv" class="visible no-print">
+    <div class="card">
+      <h2>Berichte-Archiv</h2>
+      <p class="hint">Alle Tagesberichte liegen lokal in diesem Browser (IndexedDB). Wähle einen Bericht zum Öffnen oder lege einen neuen an. Es werden keine Daten an einen Server übertragen.</p>
+      <div class="actions"><button class="btn primary" onclick="newReport()">+ Neuer Bericht</button></div>
+      <div id="archivList"></div>
+    </div>
+  </section>
+
+  <div class="statusbar no-print" id="statusbar">
     <div class="stat"><b id="progressCount">0%</b><span>Checklisten-Fortschritt</span></div>
     <div class="stat"><b id="peopleCount">0</b><span>Personen gesamt</span></div>
     <div class="stat"><b id="issueCount">0</b><span>Besondere Vorkommnisse</span></div>
     <div class="stat"><b id="saveState">bereit</b><span>Speicherstatus</span></div>
   </div>
 
-  <section id="basis" class="visible">
+  <section id="basis">
     <div class="card">
       <h2>1. Basisdaten</h2>
       <p class="hint">Diese Angaben erscheinen im Kopf des druckbaren Protokolls.</p>
@@ -200,9 +213,9 @@
   </section>
 </main>
 
-<div class="toolbar no-print">
+<div class="toolbar no-print" id="toolbar">
   <div class="wrap">
-    <small>Speichert automatisch lokal in diesem Browser.</small>
+    <small><button class="btn" onclick="showArchive()">← Übersicht</button> <span id="currentLabel"></span></small>
     <div class="actions">
       <button class="btn ok" onclick="saveNow()">Speichern</button>
       <button class="btn primary" onclick="window.print()">Protokoll drucken / PDF</button>
@@ -241,15 +254,39 @@ const safetyItems = [
   ['ordnung','Ordnung und Sauberkeit','Stolperstellen, Abfälle und lose Materialien beseitigt.']
 ];
 let state = { fields:{}, tables:{}, checks:{}, photos:[] };
-function init(){
-  document.getElementById('tabs').innerHTML = tabs.map(([id,name],i)=>`<button class="tab ${i===0?'active':''}" onclick="showTab('${id}',this)">${name}</button>`).join('');
-  Object.keys(tableDefs).forEach(k => { if(!state.tables[k]) state.tables[k]=[]; });
-  safetyItems.forEach(([id])=>{ if(state.checks[id]===undefined) state.checks[id]=false; });
-  load();
-  if(!state.fields.datum) state.fields.datum = new Date().toISOString().slice(0,10);
-  renderAll(); bindInputs(); updateStats();
+let currentId = null;            // ID des gerade geöffneten Berichts (null = Übersicht)
+let mode = 'archive';
+
+/* ---- IndexedDB-Schicht: ein Object-Store „berichte“, keyPath „id“ ---- */
+const DB_NAME='bau-tagesbericht', DB_VERSION=1, STORE='berichte';
+let dbPromise=null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = ()=>{ const db=req.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return dbPromise;
 }
-function showTab(id,btn){ document.querySelectorAll('section').forEach(s=>s.classList.remove('visible')); document.getElementById(id).classList.add('visible'); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); }
+function idbPut(rec){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('Transaktion abgebrochen')); })); }
+function idbGet(id){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(STORE,'readonly').objectStore(STORE).get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+function idbGetAll(){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); })); }
+function idbDelete(id){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+
+function genId(){ return 'b-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function emptyState(){ const s={fields:{datum:today()},tables:{},checks:{},photos:[]}; Object.keys(tableDefs).forEach(k=>s.tables[k]=[]); safetyItems.forEach(([id])=>s.checks[id]=false); return s; }
+
+async function init(){
+  document.getElementById('tabs').innerHTML = tabs.map(([id,name])=>`<button class="tab" onclick="showTab('${id}',this)">${name}</button>`).join('');
+  bindInputs();                  // Listener nur EINMAL setzen; sie greifen über die state-Variable auf den jeweils offenen Bericht zu
+  try{ await openDB(); await migrateFromLocalStorage(); }
+  catch(err){ console.error('IndexedDB nicht verfügbar:', err); }
+  showArchive();
+}
+function showTab(id,btn){ mode='editor'; document.querySelectorAll('section').forEach(s=>s.classList.remove('visible')); document.getElementById(id).classList.add('visible'); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); if(btn) btn.classList.add('active'); }
 function bindInputs(){
   document.querySelectorAll('[data-key]').forEach(el=>{ el.value = state.fields[el.dataset.key] || ''; el.addEventListener('input',()=>{ state.fields[el.dataset.key]=el.value; autoSave(); }); });
   document.getElementById('photoInput').addEventListener('change', handlePhotos);
@@ -319,32 +356,123 @@ function updateStats(){
   const people = (state.tables.personal||[]).reduce((sum,r)=>sum+(parseInt(r[1],10)||0),0); document.getElementById('peopleCount').textContent=people;
   document.getElementById('issueCount').textContent=(state.tables.vorkommnisse||[]).filter(r=>r.some(Boolean)).length;
 }
-let saveErrorShown=false, saveStateTimer;
-// Zentraler Speicherpfad: fängt fehlgeschlagenes setItem (z. B. QuotaExceededError)
-// ab, zeigt einen sichtbaren Fehlerzustand und warnt einmalig. Gibt true/false zurück.
+let saveErrorShown=false, saveStateTimer, autoSaveTimer;
+/* Zentraler Speicherpfad – schreibt den offenen Bericht nach IndexedDB.
+   try/catch (hier: Promise-.catch) bleibt: IndexedDB kann volllaufen oder im
+   privaten Modus blockiert sein. Gibt ein Promise<boolean> zurück. */
 function persist(){
+  if(!currentId) return Promise.resolve(false);   // nichts geöffnet → nichts zu speichern
   const el = document.getElementById('saveState');
-  try{
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  const rec = { id: currentId, updatedAt: Date.now(), schema: 1, state };
+  return idbPut(rec).then(()=>{
     clearTimeout(saveStateTimer);
     el.textContent='gespeichert'; el.style.color='';
     saveErrorShown=false;
     saveStateTimer=setTimeout(()=>{ if(el.textContent==='gespeichert') el.textContent='bereit'; },900);
     return true;
-  }catch(err){
+  }).catch(err=>{
     console.error('Speichern fehlgeschlagen:', err);
     clearTimeout(saveStateTimer);
     el.textContent='NICHT gespeichert – Speicher voll'; el.style.color='var(--danger)';
     if(!saveErrorShown){
       saveErrorShown=true;
-      alert('Speichern fehlgeschlagen: Der lokale Browser-Speicher ist voll.\n\nBitte jetzt:\n• „JSON exportieren“ drücken, damit nichts verloren geht.\n• Große oder mehrere Fotos entfernen.\n\nDie letzten Änderungen sind sonst NICHT dauerhaft gesichert.');
+      alert('Speichern fehlgeschlagen: Der lokale Datenspeicher (IndexedDB) konnte nicht beschrieben werden – möglicherweise voll oder im privaten Modus blockiert.\n\nBitte jetzt:\n• „JSON exportieren“ drücken, damit nichts verloren geht.\n• Große oder mehrere Fotos entfernen.\n\nDie letzten Änderungen sind sonst NICHT dauerhaft gesichert.');
     }
     return false;
-  }
+  });
 }
-function autoSave(){ persist(); }
-function saveNow(){ if(persist()) alert('Tagesbericht wurde lokal gespeichert.'); }
-function load(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) state=JSON.parse(raw); }catch(e){ console.warn(e); } state.fields ||= {}; state.tables ||= {}; state.checks ||= {}; state.photos ||= []; Object.keys(tableDefs).forEach(k=>{if(!state.tables[k]) state.tables[k]=[]}); }
+// Tippen entkoppeln: IndexedDB nicht bei jedem Tastendruck (mit ggf. großen Fotos) schreiben.
+function autoSave(){ clearTimeout(autoSaveTimer); autoSaveTimer=setTimeout(()=>persist(),500); }
+function saveNow(){ clearTimeout(autoSaveTimer); persist().then(ok=>{ if(ok) alert('Tagesbericht wurde lokal gespeichert.'); }); }
+
+/* ---- Archiv / Übersicht ---- */
+function setVisible(el, show){ if(el) el.style.display = show ? '' : 'none'; }
+function showArchive(){
+  clearTimeout(autoSaveTimer); if(currentId) persist();   // offenen Stand sichern, bevor wir wechseln
+  mode='archive';
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('visible'));
+  document.getElementById('archiv').classList.add('visible');
+  setVisible(document.getElementById('nav'), false);
+  setVisible(document.getElementById('toolbar'), false);
+  setVisible(document.getElementById('statusbar'), false);
+  renderArchive();
+}
+function showEditor(){
+  mode='editor';
+  setVisible(document.getElementById('nav'), true);
+  setVisible(document.getElementById('toolbar'), true);
+  setVisible(document.getElementById('statusbar'), true);
+  const lbl=document.getElementById('currentLabel');
+  if(lbl) lbl.textContent = (state.fields.projekt||'Ohne Bauvorhaben')+' · '+(state.fields.datum||'');
+  document.querySelectorAll('section').forEach(s=>s.classList.remove('visible'));
+  document.getElementById('basis').classList.add('visible');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const firstTab=document.querySelector('#tabs .tab'); if(firstTab) firstTab.classList.add('active');
+}
+async function renderArchive(){
+  let reports=[];
+  try{ reports = await idbGetAll(); }catch(err){ console.error(err); }
+  // Sortierung: nach Datum absteigend (neueste zuerst), bei Gleichstand nach Speicherzeit.
+  reports.sort((a,b)=>{ const da=(a.state&&a.state.fields&&a.state.fields.datum)||'', db_=(b.state&&b.state.fields&&b.state.fields.datum)||''; if(da!==db_) return db_.localeCompare(da); return (b.updatedAt||0)-(a.updatedAt||0); });
+  const list=document.getElementById('archivList');
+  if(!reports.length){ list.innerHTML='<p class="hint">Noch keine Berichte. Lege mit „+ Neuer Bericht“ den ersten an.</p>'; return; }
+  list.innerHTML = reports.map(r=>{
+    const f=(r.state&&r.state.fields)||{};
+    const datum=escapeHtml(f.datum||'—');
+    const projekt=escapeHtml(f.projekt||'Ohne Bauvorhaben');
+    const nr=escapeHtml(f.berichtNr||'');
+    const fotos=(r.state&&r.state.photos&&r.state.photos.length)||0;
+    const open=currentId===r.id;
+    return `<div class="archiv-item${open?' current':''}">
+      <div class="archiv-meta"><b>${datum}</b> – ${projekt}${nr?` <span class="pill">Nr. ${nr}</span>`:''}${fotos?` <span class="pill">${fotos} Foto${fotos>1?'s':''}</span>`:''}${open?' <span class="pill">geöffnet</span>':''}</div>
+      <div class="actions">
+        <button class="btn primary" onclick="openReport('${r.id}')">Öffnen</button>
+        <button class="btn" onclick="duplicateReport('${r.id}')">Duplizieren</button>
+        <button class="btn danger" onclick="deleteReport('${r.id}')">Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function openReport(id){
+  try{
+    const rec=await idbGet(id);
+    if(!rec){ alert('Bericht nicht gefunden.'); return renderArchive(); }
+    state=rec.state; currentId=id; normalizeState();
+    renderAll(); updateStats(); showEditor();
+  }catch(err){ console.error(err); alert('Bericht konnte nicht geöffnet werden.'); }
+}
+function newReport(){
+  state=emptyState(); currentId=genId();
+  persist().then(()=>{ renderAll(); updateStats(); showEditor(); });
+}
+async function duplicateReport(id){
+  try{
+    const rec=await idbGet(id); if(!rec) return;
+    const copy=JSON.parse(JSON.stringify(rec.state));   // tiefe Kopie inkl. Fotos
+    await idbPut({id:genId(), updatedAt:Date.now(), schema:1, state:copy});
+    renderArchive(); alert('Bericht wurde als neue Kopie angelegt.');
+  }catch(err){ console.error(err); alert('Duplizieren fehlgeschlagen.'); }
+}
+async function deleteReport(id){
+  if(!confirm('Diesen Bericht endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return;
+  try{ await idbDelete(id); if(currentId===id) currentId=null; renderArchive(); }
+  catch(err){ console.error(err); alert('Löschen fehlgeschlagen.'); }
+}
+
+/* ---- Einmalige, nicht-destruktive Migration aus localStorage ---- */
+async function migrateFromLocalStorage(){
+  const MIG_FLAG='bau-tagesbericht-migrated-idb';
+  if(localStorage.getItem(MIG_FLAG)==='1') return;
+  let raw=null; try{ raw=localStorage.getItem(STORE_KEY); }catch(e){}
+  if(!raw){ localStorage.setItem(MIG_FLAG,'1'); return; }     // nichts zu migrieren
+  let old=null; try{ old=JSON.parse(raw); }catch(e){ console.warn('Alter Bericht nicht lesbar – bleibt unangetastet liegen.'); return; }
+  const migrated={ fields: old.fields||{}, tables: old.tables||{}, checks: old.checks||{}, photos: old.photos||[] };
+  Object.keys(tableDefs).forEach(k=>{ if(!migrated.tables[k]) migrated.tables[k]=[]; });
+  const id=genId();
+  await idbPut({id, updatedAt:Date.now(), schema:1, state:migrated});  // wirft bei Fehler → Flag wird NICHT gesetzt, alte Daten bleiben liegen
+  const check=await idbGet(id);                                        // erst nach NACHWEISLICHEM Schreiben aufräumen
+  if(check){ localStorage.setItem(MIG_FLAG,'1'); try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+}
 function exportJson(){
   // schema an oberster Stelle; das gespeicherte Datenmodell selbst bleibt unverändert.
   const payload = { schema:1, ...state };
@@ -356,15 +484,25 @@ function exportJson(){
 function normalizeState(){ state.fields ||= {}; state.tables ||= {}; state.checks ||= {}; state.photos ||= []; Object.keys(tableDefs).forEach(k=>{if(!state.tables[k]) state.tables[k]=[]}); }
 function importJson(e){
   const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader(); reader.onload=ev=>{ try{
+  const reader=new FileReader(); reader.onload=async ev=>{ try{
     const parsed=JSON.parse(ev.target.result);
     // schema entfernen (Version 1); Dateien ohne schema = Version 0, werden ebenso geladen.
     const { schema, ...rest } = parsed;
     state = rest; normalizeState();
-    persist(); renderAll(); bindInputs(); updateStats(); alert('Import erfolgreich.');
+    currentId = genId();              // Import = NEUER Bericht im Archiv, überschreibt keinen bestehenden
+    const ok = await persist();
+    renderAll(); updateStats(); showEditor();
+    alert(ok ? 'Import erfolgreich – als neuer Bericht im Archiv angelegt.' : 'Import geladen, aber Speichern fehlgeschlagen. Bitte Speicher prüfen und „JSON exportieren“.');
   } catch(err){ alert('Import fehlgeschlagen: ungültige JSON-Datei.'); } }; reader.readAsText(file); e.target.value='';
 }
-function resetAll(){ if(confirm('Alle Eingaben in dieser App wirklich löschen?')){ state={fields:{datum:new Date().toISOString().slice(0,10)},tables:{},checks:{},photos:[]}; Object.keys(tableDefs).forEach(k=>state.tables[k]=[]); safetyItems.forEach(([id])=>state.checks[id]=false); persist(); renderAll(); bindInputs(); updateStats(); } }
+function resetAll(){
+  if(!currentId) return;
+  if(confirm('Alle Eingaben in DIESEM Bericht wirklich löschen? (Andere Berichte im Archiv bleiben erhalten.)')){
+    const keepDatum = state.fields.datum || today();
+    state=emptyState(); state.fields.datum=keepDatum;
+    persist(); renderAll(); updateStats();
+  }
+}
 function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 init();
 // Service Worker liegt im Projekt-Root → relativer Pfad '../sw.js' (lokal & unter /baustellen-doku/).
