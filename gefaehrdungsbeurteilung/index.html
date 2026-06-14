@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gefährdungsbeurteilung – Industrieklettern im Hochregallager</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1f6feb" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div>
+      <h1>Gefährdungsbeurteilung</h1>
+      <p>Industrieklettern im Hochregallager</p>
+    </div>
+    <nav class="top-actions">
+      <button id="saveBtn" class="secondary">Speichern</button>
+      <button id="exportBtn" class="secondary">JSON exportieren</button>
+      <label class="file-btn secondary">JSON importieren<input id="importFile" type="file" accept="application/json" hidden></label>
+      <button id="printBtn" class="primary">Protokoll drucken</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar no-print">
+      <div class="progress-card">
+        <strong>Fortschritt</strong>
+        <div class="progress-bar"><span id="progressBar"></span></div>
+        <small id="progressText">0 % abgeschlossen</small>
+      </div>
+      <a href="#basis">1. Basisdaten</a>
+      <a href="#grundsatz">2. Grundsatzprüfung</a>
+      <a href="#gefahren">3. Gefährdungen</a>
+      <a href="#rettung">4. Rettungskonzept</a>
+      <a href="#psa">5. PSA & Arbeitsmittel</a>
+      <a href="#stop">6. Stop-Kriterien</a>
+      <a href="#unterweisung">7. Unterweisung</a>
+      <a href="#freigabe">8. Freigabe</a>
+      <button id="resetBtn" class="danger">Formular zurücksetzen</button>
+    </aside>
+
+    <section class="content" id="protocol">
+      <section class="print-title only-print">
+        <h1>Protokoll Gefährdungsbeurteilung</h1>
+        <p>Industrieklettern im Hochregallager</p>
+      </section>
+
+      <section class="card" id="basis">
+        <h2>1. Basisdaten</h2>
+        <div class="grid two">
+          <label>Unternehmen<input data-field="unternehmen" type="text"></label>
+          <label>Auftraggeber / Betreiber<input data-field="auftraggeber" type="text"></label>
+          <label>Einsatzort<input data-field="einsatzort" type="text"></label>
+          <label>Arbeitsbereich / Regalreihe<input data-field="arbeitsbereich" type="text"></label>
+          <label>Tätigkeit<input data-field="taetigkeit" type="text" placeholder="z. B. Montage, Inspektion, Reinigung"></label>
+          <label>Maximale Arbeitshöhe<input data-field="arbeitshoehe" type="text" placeholder="z. B. 18 m"></label>
+          <label>Datum<input data-field="datum" type="date"></label>
+          <label>Aufsichtführende Person<input data-field="aufsicht" type="text"></label>
+          <label>Rettungsverantwortliche Person<input data-field="rettungsverantwortlich" type="text"></label>
+          <label>Erstellt durch<input data-field="erstelltDurch" type="text"></label>
+        </div>
+        <label>Arbeitsbeschreibung<textarea data-field="arbeitsbeschreibung" rows="4" placeholder="Kurze Beschreibung der konkreten Arbeiten, Zugänge, Höhen, beteiligten Personen und Schnittstellen zum Lagerbetrieb."></textarea></label>
+      </section>
+
+      <section class="card" id="grundsatz">
+        <h2>2. Grundsatzprüfung: Zugangsmethode</h2>
+        <p class="hint">Dokumentiere, warum Seilzugang geeignet ist und ob sicherere Alternativen geprüft wurden.</p>
+        <div id="alternatives"></div>
+        <label>Begründung für das gewählte Verfahren<textarea data-field="verfahrenBegruendung" rows="4"></textarea></label>
+      </section>
+
+      <section class="card" id="gefahren">
+        <h2>3. Gefährdungen und Maßnahmen</h2>
+        <p class="hint">Bewertung: 1 = niedrig, 2 = mittel, 3 = hoch. Risiko = Wahrscheinlichkeit × Schadensschwere.</p>
+        <div id="hazards"></div>
+      </section>
+
+      <section class="card" id="rettung">
+        <h2>4. Rettungskonzept</h2>
+        <div class="checklist" id="rescueChecklist"></div>
+        <div class="grid two">
+          <label>Rettungsszenario 1<textarea data-field="rettungSzenario1" rows="3" placeholder="Handlungsfähige Person im Seil"></textarea></label>
+          <label>Rettungsszenario 2<textarea data-field="rettungSzenario2" rows="3" placeholder="Handlungsunfähige Person im Seil"></textarea></label>
+          <label>Rettungsmaterial<textarea data-field="rettungsmaterial" rows="3" placeholder="Rettungsgerät, Zusatzseil, Flaschenzug, Erste Hilfe..."></textarea></label>
+          <label>Notruf / Einweisung Rettungskräfte<textarea data-field="notruf" rows="3"></textarea></label>
+        </div>
+      </section>
+
+      <section class="card" id="psa">
+        <h2>5. PSA und Arbeitsmittel</h2>
+        <div class="checklist" id="equipmentChecklist"></div>
+        <label>Bemerkungen zu PSA / Prüfungen<textarea data-field="psaBemerkungen" rows="3"></textarea></label>
+      </section>
+
+      <section class="card" id="stop">
+        <h2>6. Stop-Kriterien</h2>
+        <div class="checklist" id="stopChecklist"></div>
+      </section>
+
+      <section class="card" id="unterweisung">
+        <h2>7. Unterweisung / Einsatzbesprechung</h2>
+        <div class="grid two">
+          <label>Unterwiesene Personen<textarea data-field="unterwiesene" rows="4" placeholder="Namen der beteiligten Personen"></textarea></label>
+          <label>Besprochene Themen<textarea data-field="themen" rows="4" placeholder="Sperrbereich, Rettung, Anschlagpunkte, Kommunikation..."></textarea></label>
+        </div>
+        <div class="checklist" id="briefingChecklist"></div>
+      </section>
+
+      <section class="card" id="freigabe">
+        <h2>8. Freigabe und Unterschriften</h2>
+        <div class="grid two">
+          <label>Freigabe Betreiber durch<input data-field="freigabeBetreiber" type="text"></label>
+          <label>Freigabe Kletterteam durch<input data-field="freigabeTeam" type="text"></label>
+          <label>Ort<input data-field="ort" type="text"></label>
+          <label>Datum Freigabe<input data-field="datumFreigabe" type="date"></label>
+        </div>
+        <div class="signatures">
+          <div><span></span><p>Unterschrift Betreiber</p></div>
+          <div><span></span><p>Unterschrift Aufsichtführende Person</p></div>
+          <div><span></span><p>Unterschrift Rettungsverantwortliche Person</p></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <template id="altTemplate">
+    <article class="item-row">
+      <label class="check"><input type="checkbox"><span></span></label>
+      <div>
+        <strong class="title"></strong>
+        <textarea rows="2" placeholder="Ergebnis / Begründung"></textarea>
+      </div>
+    </article>
+  </template>
+
+  <template id="hazardTemplate">
+    <article class="hazard">
+      <div class="hazard-head">
+        <label class="check"><input type="checkbox"><span></span></label>
+        <div>
+          <h3></h3>
+          <p></p>
+        </div>
+      </div>
+      <div class="grid four risk-grid">
+        <label>Wahrscheinlichkeit vorher<select class="wp"><option>1</option><option selected>2</option><option>3</option></select></label>
+        <label>Schwere vorher<select class="sp"><option>1</option><option selected>2</option><option>3</option></select></label>
+        <label>Wahrscheinlichkeit nachher<select class="wn"><option selected>1</option><option>2</option><option>3</option></select></label>
+        <label>Schwere nachher<select class="sn"><option selected>1</option><option>2</option><option>3</option></select></label>
+      </div>
+      <div class="risk-output"><span class="before"></span><span class="after"></span></div>
+      <label>Maßnahmen<textarea class="measures" rows="4"></textarea></label>
+      <label>Bemerkungen / Restgefährdung<textarea class="notes" rows="2"></textarea></label>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+  <script>
+    // Service Worker liegt im Projekt-Root → relativer Pfad '../sw.js'.
+    // Funktioniert lokal und unter GitHub Pages (/baustellen-doku/).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('../sw.js').catch(err => console.warn('SW-Registrierung fehlgeschlagen:', err));
+      });
+    }
+  </script>
+</body>
+</html>
