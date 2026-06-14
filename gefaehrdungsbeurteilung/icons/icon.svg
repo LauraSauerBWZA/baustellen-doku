@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Gefährdungsbeurteilung Industrieklettern">
+  <rect width="512" height="512" fill="#1f6feb"/>
+  <path d="M256 96 L376 142 V268 c0 84 -58 132 -120 154 -62 -22 -120 -70 -120 -154 V142 Z" fill="#ffffff"/>
+  <circle cx="256" cy="214" r="30" fill="none" stroke="#1f6feb" stroke-width="20"/>
+  <path d="M256 244 V340" stroke="#1f6feb" stroke-width="20" stroke-linecap="round"/>
+  <path d="M256 268 L300 312 M256 268 L212 312" stroke="#1f6feb" stroke-width="20" stroke-linecap="round" fill="none"/>
+</svg>
