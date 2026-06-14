@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Baustellen-Dokumentation</title>
+  <meta name="description" content="Offline-Tools für die Baustelle: Gefährdungsbeurteilung und Bau-Tagesbericht. Alle Daten bleiben lokal im Browser." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1f4f82" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <style>
+    :root{
+      --bg:#f4f6f8; --card:#fff; --text:#17202a; --muted:#667085; --line:#d7dde5;
+      --primary:#1f4f82; --accent:#1f6feb; --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+    header{background:linear-gradient(135deg,var(--primary),#0f172a);color:#fff;padding:40px 20px}
+    .wrap{max-width:900px;margin:0 auto}
+    header h1{margin:0 0 8px;font-size:30px}
+    header p{margin:0;color:#dbeafe}
+    main{max-width:900px;margin:28px auto;padding:0 20px 60px}
+    .tools{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    .tool{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+      box-shadow:0 6px 18px rgba(15,23,42,.06);padding:22px;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s}
+    .tool:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.12)}
+    .tool .badge{display:inline-block;width:48px;height:48px;border-radius:12px;margin-bottom:12px}
+    .tool h2{margin:0 0 6px;font-size:20px}
+    .tool p{margin:0;color:var(--muted);font-size:15px}
+    .note{margin-top:26px;background:#eef2f7;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;color:#374151;font-size:15px}
+    footer{max-width:900px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:13px}
+    @media(max-width:680px){.tools{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Baustellen-Dokumentation</h1>
+      <p>Zwei Offline-Werkzeuge für Sicherheit und Tagesdoku auf der Baustelle.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="tools">
+      <a class="tool" href="gefaehrdungsbeurteilung/">
+        <img class="badge" src="gefaehrdungsbeurteilung/icons/icon.svg" alt="" />
+        <h2>Gefährdungsbeurteilung</h2>
+        <p>Industrieklettern im Hochregallager: Gefährdungen, Maßnahmen, Rettungskonzept und Freigabe.</p>
+      </a>
+      <a class="tool" href="tagesbericht/">
+        <img class="badge" src="tagesbericht/icons/icon.svg" alt="" />
+        <h2>Bau-Tagesbericht</h2>
+        <p>Tagesberichte erfassen, Fotos anhängen, exportieren und drucken.</p>
+      </a>
+    </div>
+
+    <div class="note">
+      🔒 <strong>Alle Daten bleiben lokal im Browser.</strong> Es werden keine Daten an Server
+      übertragen. Beide Tools laufen offline und lassen sich auf dem Handy installieren.
+    </div>
+  </main>
+
+  <footer>© 2026 Laura Sauer · MIT-Lizenz</footer>
+
+  <script>
+    // Service Worker registrieren (relativer Pfad → funktioniert auch unter /baustellen-doku/).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW-Registrierung fehlgeschlagen:', err));
+      });
+    }
+  </script>
+</body>
+</html>

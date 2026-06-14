@@ -1,0 +1,17 @@
+# Betriebssystem
+.DS_Store
+
+# Secrets / Konfiguration (niemals committen)
+.env
+*.key
+service-account*.json
+
+# Interne Workflow-Ordner (nicht ins öffentliche Repo)
+PROMPT/
+BERICHTE/
+docker/
+CLAUDE.md
+
+# Lokale Export-Dateien der Tools
+*-tagesbericht-*.json
+gefaehrdungsbeurteilung-*.json
