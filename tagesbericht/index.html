@@ -3,238 +3,401 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bau-Tagesbericht Web-App</title>
+  <title>Bau-Tagesbericht · Climbing World</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#1f4f82" />
+  <meta name="theme-color" content="#1b1c20" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <!-- Werkstatt-Schriften von Google Fonts. Progressive Enhancement: display=swap +
+       System-Font-Fallback in jedem Font-Stack -> offline bleibt das Layout intakt. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#f4f6f8; --card:#fff; --text:#111827; --muted:#6b7280; --line:#d1d5db;
-      --primary:#1f4f82; --primary2:#2563eb; --danger:#b91c1c; --ok:#15803d; --warn:#b45309;
+      --bg:#f5f6f7; --card:#fff; --line:#e7e8ea; --line2:#e0e1e4;
+      --ink:#16181d; --muted:#8a8e93; --muted2:#9a9ea3;
+      --accent:#FFE600; --dark:#1b1c20; --dark2:#26272c;
+      --ok:#15803d; --warn:#b45309; --danger:#b91c1c;
+      --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+      --head:'Saira Condensed','Arial Narrow',system-ui,sans-serif;
+      --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
       --radius:14px;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
-    header{background:linear-gradient(135deg,var(--primary),#0f172a);color:white;padding:28px 18px}
-    .wrap{max-width:1200px;margin:0 auto}
-    header h1{margin:0 0 6px;font-size:28px}
-    header p{margin:0;color:#dbeafe}
-    nav{position:sticky;top:0;background:#ffffffee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:20}
-    .tabs{display:flex;gap:8px;overflow:auto;padding:10px 18px;max-width:1200px;margin:0 auto}
-    .tab{border:1px solid var(--line);background:white;color:var(--text);padding:9px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;font-weight:600}
-    .tab.active{background:var(--primary2);border-color:var(--primary2);color:white}
-    main{max-width:1200px;margin:20px auto;padding:0 18px 80px}
+    html,body{margin:0}
+    body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5}
+    ::placeholder{color:#aeb2b7}
+    h2,h3{margin:0}
+    .app{display:flex;min-height:100vh}
+
+    /* ---- Sidebar (Desktop) ---- */
+    .sidebar{width:248px;background:var(--dark);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;flex-shrink:0;z-index:5}
+    .logo{display:flex;align-items:center;gap:11px;padding:20px 18px 16px}
+    .logo .badge{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-weight:800;font-size:16px;color:var(--ink);flex-shrink:0}
+    .logo .brand{font-family:var(--head);font-weight:700;font-size:18px;color:#fff;letter-spacing:.4px;line-height:1.1;white-space:nowrap}
+    .logo .tool{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--accent)}
+    .s-div{height:1px;background:#2a2b30;margin:0 14px 8px}
+    #navList{display:flex;flex-direction:column;padding:2px 10px;gap:2px;overflow-y:auto}
+    .snav,.snav-archiv{display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:14.5px;width:100%;text-align:left;background:transparent;color:#a6a9ad;font-weight:500}
+    .snav-archiv{margin:4px 10px 2px;width:auto}
+    .snav .no{font-family:var(--mono);font-size:10px;opacity:.6;width:16px;text-align:left}
+    .snav-archiv .no{font-family:var(--mono);font-size:11px;opacity:.7;width:16px;color:var(--accent)}
+    .snav .dot,.snav-archiv .dot{width:15px;height:15px;border-radius:4px;flex-shrink:0;border:1.5px solid #4a4d52}
+    .snav:hover,.snav-archiv:hover{color:#e4e5e7}
+    .snav.active,.snav-archiv.active{background:var(--dark2);color:#fff;box-shadow:inset 3px 0 var(--accent);font-weight:600}
+    .snav.active .dot,.snav-archiv.active .dot{border-color:var(--accent)}
+    .s-foot{margin-top:auto;padding:14px;display:flex;align-items:center;gap:10px;border-top:1px solid #2a2b30}
+    .s-foot .av{width:32px;height:32px;border-radius:50%;background:#3a3c42;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0}
+
+    /* ---- Main / Topbar ---- */
+    .main{flex:1;min-width:0;display:flex;flex-direction:column}
+    .topbar{position:sticky;top:0;z-index:8;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    .topbar-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 20px;height:62px}
+    .ybar{width:4px;height:30px;background:var(--accent);border-radius:2px;flex-shrink:0}
+    .top-title{font-family:var(--head);font-weight:600;font-size:20px;line-height:1;color:var(--ink)}
+    .top-sub{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .save-chip{display:flex;align-items:center;gap:7px;background:#f1f2f4;border:1px solid var(--line);border-radius:99px;padding:6px 12px;flex-shrink:0}
+    .save-chip .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+    .save-chip #saveState{font-size:12.5px;font-weight:600;color:var(--ink)}
+    .pillbar{display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px}
+    #tabs{display:contents}
+    .pill-tab{border:1px solid var(--line2);background:#fff;color:var(--ink);font-weight:600;font-size:13px;padding:8px 13px;border-radius:99px;cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:var(--sans)}
+    .pill-tab.active{border-color:var(--accent);background:var(--accent)}
+
+    main{flex:1;width:100%;max-width:1080px;margin:0 auto;padding:22px 20px 96px}
     section{display:none}.visible{display:block}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 6px 18px rgba(15,23,42,.06);padding:18px;margin-bottom:18px}
-    .card h2{margin:0 0 12px;font-size:22px}.card h3{margin:18px 0 8px;font-size:17px}.hint{color:var(--muted);font-size:14px;margin:4px 0 14px}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.col-12{grid-column:span 12}.col-8{grid-column:span 8}.col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-3{grid-column:span 3}
-    label{display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:5px}
-    input,textarea,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font:inherit;background:white;color:var(--text)}
-    textarea{min-height:88px;resize:vertical}.small{min-height:42px}
-    table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid var(--line);padding:8px;vertical-align:top}th{background:#f3f4f6;text-align:left;font-size:13px}td input,td textarea,td select{border:none;border-radius:0;padding:6px;background:transparent}td textarea{min-height:42px}
-    .actions{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.btn{border:0;border-radius:10px;padding:10px 13px;font-weight:700;cursor:pointer;background:#e5e7eb;color:#111827}.btn.primary{background:var(--primary2);color:white}.btn.danger{background:#fee2e2;color:var(--danger)}.btn.ok{background:#dcfce7;color:var(--ok)}.btn.warn{background:#fef3c7;color:var(--warn)}
-    .checklist{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.checkitem{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff}.checkitem input{width:auto;margin-top:3px}.checkitem span{font-weight:600}.checkitem small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
-    .statusbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.stat{background:white;border:1px solid var(--line);border-radius:14px;padding:14px}.stat b{display:block;font-size:24px}.stat span{color:var(--muted);font-size:13px}
-    .toolbar{position:fixed;left:0;right:0;bottom:0;background:#ffffffee;backdrop-filter:blur(8px);border-top:1px solid var(--line);z-index:30}.toolbar .wrap{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 18px}.toolbar small{color:var(--muted)}
-    .fileinput{display:none}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 9px;background:#f9fafb;font-size:12px;color:#374151}.photo-list img{max-width:140px;max-height:100px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;margin-bottom:6px}.photo-item{display:inline-block;margin:8px 12px 8px 0;vertical-align:top;max-width:160px}.photo-item input{font-size:12px;padding:6px}
-    .archiv-item{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
-    .archiv-item.current{border-color:var(--primary2);box-shadow:0 0 0 2px rgba(37,99,235,.18)}
-    .archiv-meta{font-size:15px}.archiv-meta b{font-size:16px}
-    .archiv-item .actions{margin:0}
-    @media(max-width:800px){.grid{grid-template-columns:1fr}.col-12,.col-8,.col-6,.col-4,.col-3{grid-column:span 1}.checklist,.statusbar{grid-template-columns:1fr}.toolbar .wrap{display:block}.toolbar .actions{margin:8px 0 0}table{font-size:13px}}
+
+    /* ---- Cards / Forms ---- */
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px;box-shadow:0 1px 2px rgba(16,18,25,.04)}
+    .sec-head{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+    .sec-no{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--accent);padding:3px 8px;border-radius:6px;font-weight:600}
+    .card h2{font-family:var(--head);font-weight:600;font-size:22px;color:var(--ink)}
+    .card h3{font-family:var(--head);font-weight:600;font-size:17px;color:var(--ink);margin:22px 0 12px}
+    .hint{margin:0 0 18px;color:var(--muted);font-size:13.5px}
+    label{display:block;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    input,textarea,select{width:100%;border:1px solid var(--line2);border-radius:9px;padding:11px 12px;font:inherit;font-size:14px;color:var(--ink);background:#fff;outline:none}
+    textarea{min-height:96px;resize:vertical;line-height:1.5}
+    input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #fff3a8}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .col-12{grid-column:span 12}.col-8{grid-column:span 8}.col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-3{grid-column:span 3}
+    .field{margin-top:14px}
+
+    /* ---- Buttons ---- */
+    .btn{border:1px solid var(--line2);background:#fff;color:var(--ink);font-weight:600;font-size:13px;padding:10px 14px;border-radius:9px;cursor:pointer;font-family:var(--sans)}
+    .btn:hover{border-color:var(--accent)}
+    .btn.accent{background:var(--accent);border-color:var(--accent);color:var(--ink);font-family:var(--head);font-weight:700;letter-spacing:.4px}
+    .btn.dark{background:var(--ink);border-color:var(--ink);color:#fff;display:inline-flex;align-items:center;gap:7px}
+    .btn.dark:hover{background:#000;border-color:#000}.btn.dark .sq{width:7px;height:7px;background:var(--accent);border-radius:2px}
+    .btn.ok{background:#e7f6ec;border-color:#e7f6ec;color:var(--ok)}
+    .btn.danger{background:#fef2f2;border-color:#fef2f2;color:#b91c1c}
+    .actions{display:flex;flex-wrap:wrap;gap:9px;margin:0}
+    .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .fileinput{display:none}
+
+    /* ---- EditTable (Desktop = Tabelle, Mobil = Karten) ---- */
+    .et-wide{overflow-x:auto;border:1px solid #eceef0;border-radius:10px}
+    .et-wide table{width:100%;border-collapse:collapse;min-width:560px}
+    .et-wide th{text-align:left;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--muted2);padding:11px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:#fafbfc}
+    .et-wide td{padding:0;vertical-align:top;border-right:1px solid #f4f5f6;border-bottom:1px solid #f0f1f3}
+    .et-wide td:last-child{border-right:none}
+    .et-wide td input,.et-wide td textarea,.et-wide td select{border:none;background:transparent;border-radius:0;font-size:13.5px;color:#23262b;padding:11px 12px}
+    .et-wide td textarea{min-height:44px;line-height:1.45}
+    .et-wide td input:focus,.et-wide td textarea:focus,.et-wide td select:focus{box-shadow:none;background:#fffbe2}
+    .et-actcol{width:46px;background:#fafbfc}
+    .et-del{border:none;background:transparent;color:#c0392b;cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:7px;line-height:1}
+    .et-del:hover{background:#fef2f2}
+    .et-narrow{display:none;flex-direction:column;gap:10px}
+    .et-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:13px;display:flex;flex-direction:column;gap:10px}
+    .et-card .et-f{display:flex;flex-direction:column;gap:4px}
+    .et-col{font-family:var(--mono);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted2)}
+    .et-card input,.et-card textarea,.et-card select{border:1px solid var(--line2);border-radius:8px}
+    .et-empty{padding:16px;text-align:center;color:var(--muted2);font-size:13px;border:1px dashed #d6d8db;border-radius:10px}
+    .btn-del{border:none;background:#fef2f2;color:#b91c1c;font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer}
+    .et-add{margin-top:11px}
+
+    /* ---- Checklist ---- */
+    .checklist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ck{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--line);background:#fff;border-radius:12px;padding:13px;cursor:pointer}
+    .ck.on{border-color:var(--accent);background:#fffdf0}
+    .ck input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;cursor:pointer}
+    .ck-t{font-weight:600;font-size:14px;color:var(--ink)}
+    .ck small{display:block;font-size:12.5px;color:#7b7f84;margin-top:2px;line-height:1.4}
+
+    /* ---- Photos ---- */
+    .photo-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .ph{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+    .ph-img{aspect-ratio:4/3;background:#f1f2f4;position:relative}
+    .ph-img img{width:100%;height:100%;object-fit:cover;display:block}
+    .ph-no{position:absolute;top:8px;left:8px;background:rgba(22,24,29,.82);color:#fff;font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:6px}
+    .ph-body{padding:10px}
+    .ph-name{font-family:var(--mono);font-size:10px;color:var(--muted2);margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ph-empty{border:1.5px dashed #d6d8db;border-radius:12px;padding:34px;text-align:center;color:var(--muted2)}
+    .ph-empty b{display:block;font-family:var(--head);font-size:18px;color:#7b7f84;font-weight:600}
+
+    /* ---- Signatures ---- */
+    .sig-line{height:46px;border-bottom:1.5px solid #c7c9cd;margin-top:14px}
+    .sig-cap{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);margin-top:6px}
+
+    /* ---- Dashboard ---- */
+    .stat-grid{display:grid;gap:14px;grid-template-columns:repeat(4,1fr)}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 17px}
+    .stat .k{font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+    .stat .v{font-family:var(--head);font-weight:700;font-size:32px;color:var(--ink);line-height:1}
+    .stat .sub{font-size:12px;color:#6b7076;margin-top:11px}
+    .stat.dark{background:var(--dark);border-color:var(--dark)}
+    .stat.dark .k{color:#9a9ea3}.stat.dark .v{color:#fff;font-size:24px;display:flex;align-items:center;gap:8px}
+    .stat.dark .v::before{content:"";width:9px;height:9px;border-radius:50%;background:#52d27e}
+    .bar{height:6px;background:#eef0f2;border-radius:99px;margin-top:11px;overflow:hidden}
+    .bar>span{display:block;height:100%;background:var(--accent);border-radius:99px}
+    .dash-grid{display:grid;gap:18px;grid-template-columns:1.4fr 1fr;margin-top:18px}
+    .dash-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .v-big{font-family:var(--head);font-weight:700;font-size:44px;line-height:1;color:var(--ink)}
+    .kv{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid #f0f1f3}
+    .kv .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2)}
+    .kv .v{font-size:13.5px;font-weight:600;text-align:right}
+    .photo-prev{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .pp{border-radius:10px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;background:#f1f2f4}
+    .pp img{width:100%;height:100%;object-fit:cover;display:block}
+
+    /* ---- Archiv ---- */
+    .archiv-item{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;background:#fff}
+    .archiv-item.current{border-color:var(--accent);box-shadow:0 0 0 2px #fff3a8}
+    .archiv-meta b{font-family:var(--head);font-weight:700;font-size:17px}
+    .pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 9px;background:#f9fafb;font-family:var(--mono);font-size:11px;color:#374151}
+
+    /* ---- Toolbar ---- */
+    .toolbar{position:sticky;bottom:0;z-index:8;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+    .toolbar-row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1080px;margin:0 auto;padding:11px 20px;flex-wrap:wrap}
+    .toolbar small{font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+    /* ---- Print ---- */
+    .print-head{display:none}
+    @media(max-width:879px){
+      .sidebar{display:none}
+      .grid{grid-template-columns:1fr}.col-12,.col-8,.col-6,.col-4,.col-3{grid-column:span 1}
+      .stat-grid{grid-template-columns:1fr 1fr}.dash-grid{grid-template-columns:1fr}
+      .checklist{grid-template-columns:1fr}
+      .et-wide{display:none}.et-narrow{display:flex}
+    }
+    @media(min-width:880px){ .pillbar,.ybar{display:none} }
     @media print{
-      body{background:white}.no-print,nav,.toolbar,.actions,.tab{display:none!important}header{background:white;color:black;border-bottom:2px solid #111;padding:0 0 12px;margin:0 0 12px}header p{color:#333}main{max-width:none;margin:0;padding:0}.card{box-shadow:none;border:1px solid #999;border-radius:0;break-inside:avoid;padding:10px;margin-bottom:10px}section{display:block!important}.print-hide{display:none!important}input,textarea,select{border:0;padding:0}textarea{min-height:auto}th{background:#eee!important}.checkitem{border:0;padding:3px}.checklist{grid-template-columns:repeat(2,1fr)}.statusbar{display:none}.photo-list img{max-width:110px;max-height:80px}.signature{height:52px;border-bottom:1px solid #111;margin-top:24px}.pagebreak{break-before:page}
+      .sidebar,.topbar,.toolbar,.no-print,.chrome{display:none!important}
+      .app{display:block}
+      body{background:#fff;color:#000}
+      main{max-width:none;margin:0;padding:0 16px}
+      #archiv,#uebersicht{display:none!important}
+      .psection{display:block!important;margin-bottom:14px}
+      .card{box-shadow:none;border:1px solid #c9cbce;border-radius:6px;break-inside:avoid;padding:12px;margin-bottom:10px}
+      .et-wide{display:block;overflow:visible;border-color:#c9cbce}.et-wide table{min-width:0}.et-narrow{display:none}
+      input,textarea,select{font-size:11.5px;color:#111;border-color:#d6d8db}
+      .checklist{grid-template-columns:1fr 1fr}
+      .print-head{display:block!important;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+      .print-head .ph-row{display:flex;justify-content:space-between;align-items:flex-end}
+      .print-head .ph-title{font-family:var(--head);font-weight:700;font-size:24px}
+      .print-head .ph-proj{font-size:12px;color:#333}
+      .print-head .ph-meta{text-align:right;font-size:12px;color:#333}
     }
   </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1>Bau-Tagesbericht</h1>
-    <p>Web-App zum Erfassen, Speichern, Exportieren und Drucken von Tagesberichten.</p>
-  </div>
-</header>
-<nav class="no-print" id="nav"><div class="tabs" id="tabs"></div></nav>
-<main>
-  <section id="archiv" class="visible no-print">
-    <div class="card">
-      <h2>Berichte-Archiv</h2>
-      <p class="hint">Alle Tagesberichte liegen lokal in diesem Browser (IndexedDB). Wähle einen Bericht zum Öffnen oder lege einen neuen an. Es werden keine Daten an einen Server übertragen.</p>
-      <div class="actions">
-        <button class="btn primary" onclick="newReport()">+ Neuer Bericht</button>
-        <button class="btn" onclick="exportAll()">Alle exportieren</button>
-        <label class="btn" for="importAllInput">Alle importieren</label><input id="importAllInput" class="fileinput" type="file" accept="application/json">
+<div class="app">
+  <aside class="sidebar chrome">
+    <div class="logo">
+      <div class="badge">CW</div>
+      <div><div class="brand">CLIMBING WORLD</div><div class="tool">TAGESBERICHT</div></div>
+    </div>
+    <div class="s-div"></div>
+    <button class="snav-archiv" data-id="archiv" onclick="showArchive()"><span class="dot"></span><span class="no">★</span><span style="flex:1;text-align:left">Archiv</span></button>
+    <nav id="navList"></nav>
+    <div class="s-foot">
+      <div class="av">MM</div>
+      <div style="line-height:1.2;min-width:0"><div style="color:#e4e5e7;font-size:13px;font-weight:600">Marcel Maser</div><div style="color:#7b7f84;font-size:11px">Projektleiter</div></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar chrome">
+      <div class="topbar-row">
+        <div style="display:flex;align-items:center;gap:13px;min-width:0">
+          <div class="ybar"></div>
+          <div style="min-width:0">
+            <div class="top-title" id="topTitle">Archiv</div>
+            <div class="top-sub" id="topSub">Alle Berichte · lokal</div>
+          </div>
+        </div>
+        <div class="save-chip"><span class="dot"></span><span id="saveState">bereit</span></div>
       </div>
-      <p class="hint">„Alle exportieren" sichert das gesamte Archiv als ein Backup. Einzelne Berichte exportierst/importierst du weiterhin im jeweils geöffneten Bericht.</p>
-      <div id="archivList"></div>
-    </div>
-  </section>
-
-  <div class="statusbar no-print" id="statusbar">
-    <div class="stat"><b id="progressCount">0%</b><span>Checklisten-Fortschritt</span></div>
-    <div class="stat"><b id="peopleCount">0</b><span>Personen gesamt</span></div>
-    <div class="stat"><b id="issueCount">0</b><span>Besondere Vorkommnisse</span></div>
-    <div class="stat"><b id="saveState">bereit</b><span>Speicherstatus</span></div>
-  </div>
-
-  <section id="basis">
-    <div class="card">
-      <h2>1. Basisdaten</h2>
-      <p class="hint">Diese Angaben erscheinen im Kopf des druckbaren Protokolls.</p>
-      <div class="grid">
-        <div class="col-6"><label>Projekt / Baustelle</label><input data-key="projekt" placeholder="z. B. Neubau Lagerhalle Muster GmbH"></div>
-        <div class="col-3"><label>Berichtsdatum</label><input type="date" data-key="datum"></div>
-        <div class="col-3"><label>Berichts-Nr.</label><input data-key="berichtNr" placeholder="z. B. 2026-001"></div>
-        <div class="col-6"><label>Auftraggeber</label><input data-key="auftraggeber"></div>
-        <div class="col-6"><label>Auftragnehmer</label><input data-key="auftragnehmer"></div>
-        <div class="col-4"><label>Bauleiter / Verantwortlicher</label><input data-key="bauleiter"></div>
-        <div class="col-4"><label>Arbeitszeit von</label><input type="time" data-key="zeitVon"></div>
-        <div class="col-4"><label>Arbeitszeit bis</label><input type="time" data-key="zeitBis"></div>
-        <div class="col-12"><label>Ort / Bauteil / Bereich</label><input data-key="bereich" placeholder="z. B. Achse A-C, EG, Dachfläche, Regalreihe 4-6"></div>
-        <div class="col-12"><label>Kurzbeschreibung des Tages</label><textarea data-key="kurzbeschreibung" placeholder="Zusammenfassung der wesentlichen Arbeiten und Ereignisse"></textarea></div>
+      <div class="pillbar">
+        <button class="pill-tab" data-id="archiv" onclick="showArchive()">Archiv</button>
+        <span id="tabs"></span>
       </div>
-    </div>
-  </section>
+    </header>
 
-  <section id="wetter">
-    <div class="card">
-      <h2>2. Wetter / äußere Bedingungen</h2>
-      <table data-table="wetter">
-        <thead><tr><th>Uhrzeit</th><th>Wetter</th><th>Temperatur</th><th>Wind</th><th>Niederschlag</th><th>Auswirkungen</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('wetter')">+ Wetterzeile</button></div>
-      <label>Bemerkungen zum Wetter</label><textarea data-key="wetterBemerkung"></textarea>
-    </div>
-  </section>
+    <main>
+      <div class="print-head" id="printHead"></div>
 
-  <section id="personal">
-    <div class="card">
-      <h2>3. Personal auf der Baustelle</h2>
-      <table data-table="personal">
-        <thead><tr><th>Firma / Gewerk</th><th>Anzahl Personen</th><th>Arbeitszeit</th><th>Tätigkeit</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('personal')">+ Personalzeile</button></div>
-    </div>
-  </section>
+      <!-- ARCHIV -->
+      <section id="archiv" class="visible no-print">
+        <div class="card">
+          <div class="sec-head"><h2>Berichte-Archiv</h2></div>
+          <p class="hint">Alle Tagesberichte liegen lokal in diesem Browser (IndexedDB). Wähle einen Bericht zum Öffnen oder lege einen neuen an. Es werden keine Daten an einen Server übertragen.</p>
+          <div class="actions">
+            <button class="btn accent" onclick="newReport()">+ Neuer Bericht</button>
+            <button class="btn" onclick="exportAll()">Alle exportieren</button>
+            <label class="btn" for="importAllInput">Alle importieren</label><input id="importAllInput" class="fileinput" type="file" accept="application/json">
+          </div>
+          <p class="hint" style="margin:14px 0 0">„Alle exportieren" sichert das gesamte Archiv als ein Backup. Einzelne Berichte exportierst/importierst du weiterhin im jeweils geöffneten Bericht.</p>
+          <div id="archivList" style="margin-top:16px"></div>
+        </div>
+      </section>
 
-  <section id="arbeiten">
-    <div class="card">
-      <h2>4. Ausgeführte Arbeiten</h2>
-      <table data-table="arbeiten">
-        <thead><tr><th>Bereich / Bauteil</th><th>Tätigkeit</th><th>Menge / Einheit</th><th>Status</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('arbeiten')">+ Arbeit hinzufügen</button></div>
-      <label>Detaillierte Beschreibung</label><textarea data-key="arbeitenDetail"></textarea>
-    </div>
-  </section>
+      <!-- ÜBERSICHT (Dashboard, dynamisch) -->
+      <section id="uebersicht" class="no-print"></section>
 
-  <section id="geraete">
-    <div class="card">
-      <h2>5. Geräte, Maschinen und Fahrzeuge</h2>
-      <table data-table="geraete">
-        <thead><tr><th>Gerät / Maschine</th><th>Anzahl</th><th>Einsatzzeit</th><th>Bemerkung</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('geraete')">+ Gerät hinzufügen</button></div>
-    </div>
-    <div class="card">
-      <h2>6. Materiallieferungen</h2>
-      <table data-table="material">
-        <thead><tr><th>Material</th><th>Menge</th><th>Lieferschein-Nr.</th><th>Lieferant</th><th>Bemerkung</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('material')">+ Material hinzufügen</button></div>
-    </div>
-  </section>
+      <!-- 01 BASISDATEN -->
+      <section id="basis" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">01</span><h2>Basisdaten</h2></div>
+          <p class="hint">Diese Angaben erscheinen im Kopf des druckbaren Protokolls.</p>
+          <div class="grid">
+            <div class="col-6"><label>Projekt / Baustelle</label><input data-key="projekt" placeholder="z. B. Neubau Lagerhalle Muster GmbH"></div>
+            <div class="col-3"><label>Berichtsdatum</label><input type="date" data-key="datum"></div>
+            <div class="col-3"><label>Berichts-Nr.</label><input data-key="berichtNr" placeholder="2026-001"></div>
+            <div class="col-6"><label>Auftraggeber</label><input data-key="auftraggeber"></div>
+            <div class="col-6"><label>Auftragnehmer</label><input data-key="auftragnehmer"></div>
+            <div class="col-4"><label>Bauleiter / Verantwortlicher</label><input data-key="bauleiter"></div>
+            <div class="col-4"><label>Arbeitszeit von</label><input type="time" data-key="zeitVon"></div>
+            <div class="col-4"><label>Arbeitszeit bis</label><input type="time" data-key="zeitBis"></div>
+            <div class="col-12"><label>Ort / Bauteil / Bereich</label><input data-key="bereich" placeholder="z. B. Achse A–C, EG, Dachfläche, Regalreihe 4–6"></div>
+            <div class="col-12"><label>Kurzbeschreibung des Tages</label><textarea data-key="kurzbeschreibung" placeholder="Zusammenfassung der wesentlichen Arbeiten und Ereignisse"></textarea></div>
+          </div>
+        </div>
+      </section>
 
-  <section id="vorkommnisse">
-    <div class="card">
-      <h2>7. Besondere Vorkommnisse / Behinderungen</h2>
-      <table data-table="vorkommnisse">
-        <thead><tr><th>Thema</th><th>Beschreibung</th><th>Maßnahme / Verantwortlich</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn warn" onclick="addRow('vorkommnisse')">+ Vorkommnis hinzufügen</button></div>
-      <h3>Behinderungen / Stillstand</h3>
-      <table data-table="behinderung">
-        <thead><tr><th>Zeitraum</th><th>Ursache</th><th>Betroffener Bereich</th><th>Auswirkung</th><th>Gemeldet an</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn warn" onclick="addRow('behinderung')">+ Behinderung hinzufügen</button></div>
-    </div>
-  </section>
+      <!-- 02 WETTER -->
+      <section id="wetter" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">02</span><h2>Wetter &amp; äußere Bedingungen</h2></div>
+          <div data-table="wetter"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('wetter')">+ Wetterzeile</button></div>
+          <div class="field"><label>Bemerkungen zum Wetter</label><textarea data-key="wetterBemerkung"></textarea></div>
+        </div>
+      </section>
 
-  <section id="sicherheit">
-    <div class="card">
-      <h2>8. Arbeitssicherheit</h2>
-      <p class="hint">Checkliste für tägliche Sicherheitskontrolle und Unterweisung.</p>
-      <div class="checklist" id="safetyChecklist"></div>
-      <h3>Prüfungen / Abnahmen / Freigaben</h3>
-      <table data-table="pruefungen">
-        <thead><tr><th>Prüfung / Abnahme</th><th>Bereich</th><th>Ergebnis</th><th>Durchgeführt von</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('pruefungen')">+ Prüfung hinzufügen</button></div>
-      <label>Bemerkungen zur Arbeitssicherheit</label><textarea data-key="sicherheitBemerkung"></textarea>
-    </div>
-  </section>
+      <!-- 03 PERSONAL -->
+      <section id="personal" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">03</span><h2>Personal auf der Baustelle</h2></div>
+          <div data-table="personal"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('personal')">+ Personalzeile</button></div>
+        </div>
+      </section>
 
-  <section id="fotos">
-    <div class="card">
-      <h2>9. Fotos / Anlagen</h2>
-      <p class="hint">Fotos werden lokal im Browser gespeichert. Für viele große Fotos besser nur Dateinamen eintragen, damit der Browser-Speicher nicht voll wird.</p>
-      <div class="actions no-print"><label class="btn primary" for="photoInput">+ Foto hinzufügen</label><input id="photoInput" class="fileinput" type="file" accept="image/*" multiple></div>
-      <div class="photo-list" id="photoList"></div>
-      <h3>Anlagen / Dateiverweise</h3>
-      <table data-table="anlagen">
-        <thead><tr><th>Nr.</th><th>Beschreibung</th><th>Dateiname / Verweis</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('anlagen')">+ Anlage hinzufügen</button></div>
-    </div>
-  </section>
+      <!-- 04 ARBEITEN -->
+      <section id="arbeiten" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">04</span><h2>Ausgeführte Arbeiten</h2></div>
+          <div data-table="arbeiten"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('arbeiten')">+ Arbeit hinzufügen</button></div>
+          <div class="field"><label>Detaillierte Beschreibung</label><textarea data-key="arbeitenDetail"></textarea></div>
+        </div>
+      </section>
 
-  <section id="morgen">
-    <div class="card">
-      <h2>10. Arbeiten für den nächsten Tag</h2>
-      <table data-table="morgen">
-        <thead><tr><th>Geplante Arbeit</th><th>Bereich</th><th>Voraussetzung / Hinweis</th><th class="no-print">Aktion</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions no-print"><button class="btn" onclick="addRow('morgen')">+ Planung hinzufügen</button></div>
-      <label>Zusätzliche Hinweise</label><textarea data-key="morgenHinweise"></textarea>
-    </div>
-    <div class="card">
-      <h2>11. Unterschriften</h2>
-      <div class="grid">
-        <div class="col-6"><label>Erstellt durch</label><input data-key="unterschriftErsteller"><div class="signature"></div></div>
-        <div class="col-6"><label>Zur Kenntnis genommen durch</label><input data-key="unterschriftAg"><div class="signature"></div></div>
+      <!-- 05 GERÄTE & MATERIAL -->
+      <section id="geraete" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">05</span><h2>Geräte, Maschinen &amp; Fahrzeuge</h2></div>
+          <div data-table="geraete"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('geraete')">+ Gerät hinzufügen</button></div>
+        </div>
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">06</span><h2>Materiallieferungen</h2></div>
+          <div data-table="material"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('material')">+ Material hinzufügen</button></div>
+        </div>
+      </section>
+
+      <!-- 06 VORKOMMNISSE -->
+      <section id="vorkommnisse" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">07</span><h2>Besondere Vorkommnisse</h2></div>
+          <div data-table="vorkommnisse"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('vorkommnisse')">+ Vorkommnis hinzufügen</button></div>
+          <h3>Behinderungen / Stillstand</h3>
+          <div data-table="behinderung"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('behinderung')">+ Behinderung hinzufügen</button></div>
+        </div>
+      </section>
+
+      <!-- 07 SICHERHEIT -->
+      <section id="sicherheit" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">08</span><h2>Arbeitssicherheit</h2></div>
+          <p class="hint">Checkliste für die tägliche Sicherheitskontrolle und Unterweisung.</p>
+          <div class="checklist" id="safetyChecklist"></div>
+          <h3>Prüfungen / Abnahmen / Freigaben</h3>
+          <div data-table="pruefungen"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('pruefungen')">+ Prüfung hinzufügen</button></div>
+          <div class="field"><label>Bemerkungen zur Arbeitssicherheit</label><textarea data-key="sicherheitBemerkung"></textarea></div>
+        </div>
+      </section>
+
+      <!-- 08 FOTOS -->
+      <section id="fotos" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">09</span><h2>Fotos &amp; Anlagen</h2></div>
+          <p class="hint">Fotos werden lokal im Browser gespeichert (vor dem Ablegen automatisch verkleinert). Bei sehr vielen großen Bildern besser nur Dateinamen erfassen.</p>
+          <div class="no-print" style="margin-bottom:16px">
+            <input id="photoInput" class="fileinput" type="file" accept="image/*" multiple>
+            <label class="btn accent" for="photoInput">+ FOTOS HINZUFÜGEN</label>
+          </div>
+          <div class="photo-list" id="photoList"></div>
+          <h3>Anlagen / Dateiverweise</h3>
+          <div data-table="anlagen"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('anlagen')">+ Anlage hinzufügen</button></div>
+        </div>
+      </section>
+
+      <!-- 09 NÄCHSTER TAG -->
+      <section id="morgen" class="psection">
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">10</span><h2>Arbeiten für den nächsten Tag</h2></div>
+          <div data-table="morgen"></div>
+          <div class="et-add no-print"><button class="btn" onclick="addRow('morgen')">+ Planung hinzufügen</button></div>
+          <div class="field"><label>Zusätzliche Hinweise</label><textarea data-key="morgenHinweise"></textarea></div>
+        </div>
+        <div class="card">
+          <div class="sec-head"><span class="sec-no">11</span><h2>Unterschriften</h2></div>
+          <div class="grid">
+            <div class="col-6"><label>Erstellt durch</label><input data-key="unterschriftErsteller"><div class="sig-line"></div><div class="sig-cap">Datum, Unterschrift</div></div>
+            <div class="col-6"><label>Zur Kenntnis genommen durch</label><input data-key="unterschriftAg"><div class="sig-line"></div><div class="sig-cap">Datum, Unterschrift</div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toolbar chrome" id="toolbar">
+      <div class="toolbar-row">
+        <small>Auto-Speichern aktiv · lokal</small>
+        <div class="actions">
+          <button class="btn ok" onclick="saveNow()">Speichern</button>
+          <button class="btn dark" onclick="window.print()"><span class="sq"></span>Drucken / PDF</button>
+          <button class="btn" onclick="exportJson()">JSON exportieren</button>
+          <label class="btn" for="importInput">JSON importieren</label><input id="importInput" class="fileinput" type="file" accept="application/json">
+          <button class="btn danger" onclick="resetAll()">Leeren</button>
+        </div>
       </div>
-    </div>
-  </section>
-</main>
-
-<div class="toolbar no-print" id="toolbar">
-  <div class="wrap">
-    <small><button class="btn" onclick="showArchive()">← Übersicht</button> <span id="currentLabel"></span></small>
-    <div class="actions">
-      <button class="btn ok" onclick="saveNow()">Speichern</button>
-      <button class="btn primary" onclick="window.print()">Protokoll drucken / PDF</button>
-      <button class="btn" onclick="exportJson()">JSON exportieren</button>
-      <label class="btn" for="importInput">JSON importieren</label><input id="importInput" class="fileinput" type="file" accept="application/json">
-      <button class="btn danger" onclick="resetAll()">Leeren</button>
     </div>
   </div>
 </div>
 
 <script>
 const STORE_KEY = 'bau-tagesbericht-v1';
-const tabs = [
-  ['basis','Basis'],['wetter','Wetter'],['personal','Personal'],['arbeiten','Arbeiten'],['geraete','Geräte & Material'],['vorkommnisse','Vorkommnisse'],['sicherheit','Sicherheit'],['fotos','Fotos'],['morgen','Nächster Tag']
+const navItems = [
+  ['uebersicht','Übersicht','00'],['basis','Basisdaten','01'],['wetter','Wetter','02'],['personal','Personal','03'],
+  ['arbeiten','Arbeiten','04'],['geraete','Geräte & Material','05'],['vorkommnisse','Vorkommnisse','06'],
+  ['sicherheit','Sicherheit','07'],['fotos','Fotos','08'],['morgen','Nächster Tag','09']
 ];
 const tableDefs = {
   wetter:['Uhrzeit','Wetter','Temperatur','Wind','Niederschlag','Auswirkungen'],
@@ -261,8 +424,9 @@ const safetyItems = [
 let state = { fields:{}, tables:{}, checks:{}, photos:[] };
 let currentId = null;            // ID des gerade geöffneten Berichts (null = Übersicht)
 let mode = 'archive';
+let activeId = 'archiv';
 
-/* ---- IndexedDB-Schicht: ein Object-Store „berichte“, keyPath „id“ ---- */
+/* ---- IndexedDB-Schicht: ein Object-Store „berichte“, keyPath „id“ (unverändert) ---- */
 const DB_NAME='bau-tagesbericht', DB_VERSION=1, STORE='berichte';
 let dbPromise=null;
 function openDB(){
@@ -285,29 +449,52 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function emptyState(){ const s={fields:{datum:today()},tables:{},checks:{},photos:[]}; Object.keys(tableDefs).forEach(k=>s.tables[k]=[]); safetyItems.forEach(([id])=>s.checks[id]=false); return s; }
 
 async function init(){
-  document.getElementById('tabs').innerHTML = tabs.map(([id,name])=>`<button class="tab" onclick="showTab('${id}',this)">${name}</button>`).join('');
+  renderNav();
   bindInputs();                  // Listener nur EINMAL setzen; sie greifen über die state-Variable auf den jeweils offenen Bericht zu
   try{ await openDB(); await migrateFromLocalStorage(); }
   catch(err){ console.error('IndexedDB nicht verfügbar:', err); }
   showArchive();
 }
-function showTab(id,btn){ mode='editor'; document.querySelectorAll('section').forEach(s=>s.classList.remove('visible')); document.getElementById(id).classList.add('visible'); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); if(btn) btn.classList.add('active'); }
+function renderNav(){
+  document.getElementById('navList').innerHTML = navItems.map(([id,label,no])=>`<button class="snav" data-id="${id}" onclick="showTab('${id}')"><span class="dot"></span><span class="no">${no}</span><span style="flex:1;text-align:left">${label}</span></button>`).join('');
+  document.getElementById('tabs').innerHTML = navItems.map(([id,label])=>`<button class="pill-tab" data-id="${id}" onclick="showTab('${id}')">${label}</button>`).join('');
+}
+function setVisible(el, show){ if(el) el.style.display = show ? '' : 'none'; }
+function markActive(id){ document.querySelectorAll('.snav,.snav-archiv,.pill-tab').forEach(b=>b.classList.toggle('active', b.dataset.id===id)); }
+function showTab(id){
+  mode='editor'; activeId=id;
+  document.querySelectorAll('main > section').forEach(s=>s.classList.remove('visible'));
+  const sec=document.getElementById(id); if(sec) sec.classList.add('visible');
+  markActive(id);
+  if(id==='uebersicht') renderDashboard();
+  updateTopbar(id);
+  try{ window.scrollTo({top:0,behavior:'instant'}); }catch(_){ window.scrollTo(0,0); }
+}
 function bindInputs(){
-  document.querySelectorAll('[data-key]').forEach(el=>{ el.value = state.fields[el.dataset.key] || ''; el.addEventListener('input',()=>{ state.fields[el.dataset.key]=el.value; autoSave(); }); });
+  document.querySelectorAll('[data-key]').forEach(el=>{ el.value = state.fields[el.dataset.key] || ''; el.addEventListener('input',()=>{ state.fields[el.dataset.key]=el.value; updateTopbar(activeId); autoSave(); }); });
   document.getElementById('photoInput').addEventListener('change', handlePhotos);
   document.getElementById('importInput').addEventListener('change', importJson);
   document.getElementById('importAllInput').addEventListener('change', importJson);  // erkennt Backup vs. Einzeldatei
 }
-function renderAll(){ Object.keys(tableDefs).forEach(renderTable); renderChecklist(); renderPhotos(); document.querySelectorAll('[data-key]').forEach(el=>{el.value=state.fields[el.dataset.key]||''}); }
+function renderAll(){ Object.keys(tableDefs).forEach(renderTable); renderChecklist(); renderPhotos(); document.querySelectorAll('[data-key]').forEach(el=>{el.value=state.fields[el.dataset.key]||''}); renderDashboard(); }
+
+/* ---- EditTable: Desktop = Tabelle, Mobil = Karten (beide aus denselben Daten) ---- */
 function renderTable(name){
-  const tbody = document.querySelector(`[data-table="${name}"] tbody`); if(!tbody) return;
-  const rows = state.tables[name] || [];
-  tbody.innerHTML = rows.map((row,ri)=>`<tr>${tableDefs[name].map((col,ci)=>`<td>${cellInput(name,ri,ci,row[ci]||'',col)}</td>`).join('')}<td class="no-print"><button class="btn danger" onclick="deleteRow('${name}',${ri})">Entfernen</button></td></tr>`).join('');
+  const host = document.querySelector(`[data-table="${name}"]`); if(!host) return;
+  const cols = tableDefs[name]; const rows = state.tables[name] || [];
+  if(!rows.length){ host.innerHTML = '<div class="et-empty">Noch keine Einträge erfasst.</div>'; return; }
+  const wide = `<div class="et-wide"><table><thead><tr>${cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('')}<th class="et-actcol no-print"></th></tr></thead><tbody>${
+    rows.map((row,ri)=>`<tr>${cols.map((col,ci)=>`<td>${cellInput(name,ri,ci,row[ci]||'',col)}</td>`).join('')}<td class="no-print" style="text-align:center;vertical-align:middle"><button class="et-del" title="Zeile entfernen" onclick="deleteRow('${name}',${ri})">✕</button></td></tr>`).join('')
+  }</tbody></table></div>`;
+  const narrow = `<div class="et-narrow">${
+    rows.map((row,ri)=>`<div class="et-card">${cols.map((col,ci)=>`<div class="et-f"><span class="et-col">${escapeHtml(col)}</span>${cellInput(name,ri,ci,row[ci]||'',col)}</div>`).join('')}<div class="no-print" style="text-align:right"><button class="btn-del" onclick="deleteRow('${name}',${ri})">Entfernen</button></div></div>`).join('')
+  }</div>`;
+  host.innerHTML = wide + narrow;
 }
 function cellInput(name,ri,ci,value,col){
   const val = String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
-  if(col==='Status') return `<select onchange="updateCell('${name}',${ri},${ci},this.value)"><option ${val===''?'selected':''}></option><option ${val==='erledigt'?'selected':''}>erledigt</option><option ${val==='teilweise'?'selected':''}>teilweise</option><option ${val==='offen'?'selected':''}>offen</option></select>`;
-  if(['Beschreibung','Tätigkeit','Auswirkungen','Bemerkung','Maßnahme / Verantwortlich','Voraussetzung / Hinweis'].some(x=>col.includes(x))) return `<textarea class="small" oninput="updateCell('${name}',${ri},${ci},this.value)">${val}</textarea>`;
+  if(col==='Status') return `<select onchange="updateCell('${name}',${ri},${ci},this.value)"><option ${val===''?'selected':''}>—</option><option ${val==='erledigt'?'selected':''}>erledigt</option><option ${val==='teilweise'?'selected':''}>teilweise</option><option ${val==='offen'?'selected':''}>offen</option></select>`;
+  if(['Beschreibung','Tätigkeit','Auswirkung','Bemerkung','Maßnahme','Voraussetzung'].some(x=>col.includes(x))) return `<textarea oninput="updateCell('${name}',${ri},${ci},this.value)">${val}</textarea>`;
   return `<input value="${val}" oninput="updateCell('${name}',${ri},${ci},this.value)">`;
 }
 function addRow(name){ state.tables[name].push(Array(tableDefs[name].length).fill('')); renderTable(name); autoSave(); updateStats(); }
@@ -315,21 +502,21 @@ function deleteRow(name,idx){ state.tables[name].splice(idx,1); renderTable(name
 function updateCell(name,ri,ci,val){ state.tables[name][ri][ci]=val; autoSave(); updateStats(); }
 function renderChecklist(){
   const box = document.getElementById('safetyChecklist');
-  box.innerHTML = safetyItems.map(([id,title,desc])=>`<label class="checkitem"><input type="checkbox" ${state.checks[id]?'checked':''} onchange="state.checks['${id}']=this.checked;autoSave();updateStats();"><div><span>${title}</span><small>${desc}</small></div></label>`).join('');
+  box.innerHTML = safetyItems.map(([id,title,desc])=>`<label class="ck${state.checks[id]?' on':''}"><input type="checkbox" ${state.checks[id]?'checked':''} onchange="toggleSafety('${id}',this.checked)"><div><span class="ck-t">${title}</span><small>${desc}</small></div></label>`).join('');
 }
+function toggleSafety(id,val){ state.checks[id]=val; renderChecklist(); autoSave(); updateStats(); }
 function handlePhotos(e){
   const files=[...e.target.files];
   e.target.value='';
   files.forEach(file=>{
     const reader = new FileReader();
     reader.onload = ev => {
-      // Foto vor dem Ablegen verkleinern (längste Kante max. 1280 px, JPEG ~0.7),
-      // damit der localStorage nicht durch große Handyfotos überläuft.
+      // Foto vor dem Ablegen verkleinern (längste Kante max. 1280 px, JPEG ~0.7).
       shrinkImage(ev.target.result, 1280, 0.7).then(src=>{
-        state.photos.push({src, name:file.name, text:''}); renderPhotos(); autoSave();
+        state.photos.push({src, name:file.name, text:''}); renderPhotos(); autoSave(); updateStats();
       }).catch(()=>{
         // Falls Verkleinern scheitert (z. B. exotisches Format): Original ablegen.
-        state.photos.push({src:ev.target.result, name:file.name, text:''}); renderPhotos(); autoSave();
+        state.photos.push({src:ev.target.result, name:file.name, text:''}); renderPhotos(); autoSave(); updateStats();
       });
     };
     reader.readAsDataURL(file);
@@ -354,32 +541,80 @@ function shrinkImage(dataUrl, maxEdge, quality){
 }
 function renderPhotos(){
   const list = document.getElementById('photoList');
-  list.innerHTML = (state.photos||[]).map((p,i)=>`<div class="photo-item"><img src="${p.src}" alt="${p.name}"><span class="pill">${i+1}. ${escapeHtml(p.name||'Foto')}</span><input placeholder="Beschreibung" value="${escapeHtml(p.text||'')}" oninput="state.photos[${i}].text=this.value;autoSave();"><button class="btn danger no-print" onclick="state.photos.splice(${i},1);renderPhotos();autoSave();">Entfernen</button></div>`).join('');
+  const ps = state.photos||[];
+  if(!ps.length){ list.innerHTML='<div class="ph-empty"><b>Noch keine Fotos</b><div style="font-size:13px;margin-top:4px">Über „+ Fotos hinzufügen" Baustellenfotos anhängen.</div></div>'; return; }
+  list.innerHTML = ps.map((p,i)=>`<div class="ph"><div class="ph-img"><img src="${p.src}" alt="${escapeHtml(p.name||'')}"><span class="ph-no">#${i+1}</span></div><div class="ph-body"><div class="ph-name">${escapeHtml(p.name||'Foto')}</div><input placeholder="Beschreibung" value="${escapeHtml(p.text||'')}" oninput="state.photos[${i}].text=this.value;autoSave();"><button class="btn-del no-print" style="margin-top:8px;width:100%" onclick="state.photos.splice(${i},1);renderPhotos();autoSave();updateStats();">Entfernen</button></div></div>`).join('');
 }
-function updateStats(){
-  const total = safetyItems.length; const done = Object.values(state.checks).filter(Boolean).length;
-  document.getElementById('progressCount').textContent = Math.round(done/total*100)+'%';
-  const people = (state.tables.personal||[]).reduce((sum,r)=>sum+(parseInt(r[1],10)||0),0); document.getElementById('peopleCount').textContent=people;
-  document.getElementById('issueCount').textContent=(state.tables.vorkommnisse||[]).filter(r=>r.some(Boolean)).length;
+
+/* ---- Topbar + Dashboard (Präsentation der vorhandenen Daten) ---- */
+function updateTopbar(id){
+  const labels={archiv:'Archiv',uebersicht:'Übersicht',basis:'Basisdaten',wetter:'Wetter',personal:'Personal',arbeiten:'Arbeiten',geraete:'Geräte & Material',vorkommnisse:'Vorkommnisse',sicherheit:'Sicherheit',fotos:'Fotos',morgen:'Nächster Tag'};
+  const t=document.getElementById('topTitle'); if(t) t.textContent=labels[id]||'Tagesbericht';
+  const nr=state.fields.berichtNr||'—';
+  const d=state.fields.datum?state.fields.datum.split('-').reverse().join('.'):'—';
+  const sub=document.getElementById('topSub');
+  if(sub) sub.textContent = (id==='archiv') ? 'Alle Berichte · lokal' : ('BERICHT '+nr+' · '+d);
+  const ph=document.getElementById('printHead');
+  if(ph) ph.innerHTML = `<div class="ph-row"><div><div class="ph-title">BAU-TAGESBERICHT</div><div class="ph-proj">${escapeHtml(state.fields.projekt||'')}</div></div><div class="ph-meta">Bericht ${escapeHtml(nr)}<br>${escapeHtml(d)}</div></div>`;
 }
+function renderDashboard(){
+  const host=document.getElementById('uebersicht'); if(!host) return;
+  const total=safetyItems.length, done=Object.values(state.checks).filter(Boolean).length;
+  const pct=total?Math.round(done/total*100):0;
+  const people=(state.tables.personal||[]).reduce((s,r)=>s+(parseInt(r[1],10)||0),0);
+  const issues=(state.tables.vorkommnisse||[]).filter(r=>r.some(Boolean)).length;
+  const f=state.fields; const dash=v=>(v&&String(v).trim())?escapeHtml(v):'—';
+  const von=f.zeitVon,bis=f.zeitBis; const az=(von&&bis)?(von+'–'+bis):(von||bis||'');
+  const saveText=(document.getElementById('saveState')||{}).textContent||'bereit';
+  const ps=state.photos||[]; const recent=ps.slice(-4).reverse();
+  host.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat"><div class="k">Checklisten-Fortschritt</div><div class="v">${pct}%</div><div class="bar"><span style="width:${pct}%"></span></div></div>
+      <div class="stat"><div class="k">Personen gesamt</div><div class="v">${people}</div><div class="sub">auf der Baustelle</div></div>
+      <div class="stat"><div class="k">Vorkommnisse</div><div class="v" style="color:${issues>0?'var(--warn)':'var(--ink)'}">${issues}</div><div class="sub">heute erfasst</div></div>
+      <div class="stat dark"><div class="k">Speicherstatus</div><div class="v"><span id="dashSave">${escapeHtml(saveText)}</span></div><div class="sub" style="color:#7b7f84">lokal in diesem Browser</div></div>
+    </div>
+    <div class="dash-grid">
+      <div class="card" style="margin:0">
+        <div class="dash-h"><h3>Bericht-Eckdaten</h3><button class="btn" onclick="showTab('basis')">Bearbeiten</button></div>
+        <div class="kv"><span class="k">Projekt</span><span class="v">${dash(f.projekt)}</span></div>
+        <div class="kv"><span class="k">Auftraggeber</span><span class="v">${dash(f.auftraggeber)}</span></div>
+        <div class="kv"><span class="k">Bauleiter</span><span class="v">${dash(f.bauleiter)}</span></div>
+        <div class="kv"><span class="k">Bereich</span><span class="v">${dash(f.bereich)}</span></div>
+        <div class="kv" style="border:none"><span class="k">Arbeitszeit</span><span class="v">${az?escapeHtml(az):'—'}</span></div>
+      </div>
+      <div class="card" style="margin:0;display:flex;flex-direction:column">
+        <h3 style="margin-bottom:14px">Arbeitssicherheit</h3>
+        <div class="v-big">${pct}%</div>
+        <div class="bar" style="height:8px;margin:12px 0 10px"><span style="width:${pct}%"></span></div>
+        <div style="font-size:13px;color:#6b7076">${done} von ${total} Punkten erledigt</div>
+        <button class="btn accent" style="margin-top:16px" onclick="showTab('sicherheit')">ZUR CHECKLISTE</button>
+      </div>
+    </div>
+    ${ps.length?`<div class="card" style="margin-top:18px"><div class="dash-h"><h3>Fotos</h3><button class="btn" onclick="showTab('fotos')">Alle ansehen</button></div><div class="photo-prev">${recent.map(p=>`<div class="pp"><img src="${p.src}" alt="${escapeHtml(p.name||'')}"></div>`).join('')}</div></div>`:''}
+  `;
+}
+function updateStats(){ renderDashboard(); updateTopbar(activeId); }
+
 let saveErrorShown=false, saveStateTimer, autoSaveTimer;
+function setSave(text,isError){
+  ['saveState','dashSave'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; el.textContent=text; el.style.color = isError ? 'var(--danger)' : (id==='dashSave' ? '#fff' : ''); });
+}
 /* Zentraler Speicherpfad – schreibt den offenen Bericht nach IndexedDB.
-   try/catch (hier: Promise-.catch) bleibt: IndexedDB kann volllaufen oder im
-   privaten Modus blockiert sein. Gibt ein Promise<boolean> zurück. */
+   try/catch (Promise-.catch) bleibt: IndexedDB kann volllaufen oder blockiert sein. */
 function persist(){
   if(!currentId) return Promise.resolve(false);   // nichts geöffnet → nichts zu speichern
-  const el = document.getElementById('saveState');
   const rec = { id: currentId, updatedAt: Date.now(), schema: 1, state };
   return idbPut(rec).then(()=>{
     clearTimeout(saveStateTimer);
-    el.textContent='gespeichert'; el.style.color='';
+    setSave('gespeichert', false);
     saveErrorShown=false;
-    saveStateTimer=setTimeout(()=>{ if(el.textContent==='gespeichert') el.textContent='bereit'; },900);
+    saveStateTimer=setTimeout(()=>{ const c=document.getElementById('saveState'); if(c&&c.textContent==='gespeichert') setSave('bereit', false); },900);
     return true;
   }).catch(err=>{
     console.error('Speichern fehlgeschlagen:', err);
     clearTimeout(saveStateTimer);
-    el.textContent='NICHT gespeichert – Speicher voll'; el.style.color='var(--danger)';
+    setSave('NICHT gespeichert – Speicher voll', true);
     if(!saveErrorShown){
       saveErrorShown=true;
       alert('Speichern fehlgeschlagen: Der lokale Datenspeicher (IndexedDB) konnte nicht beschrieben werden – möglicherweise voll oder im privaten Modus blockiert.\n\nBitte jetzt:\n• „JSON exportieren“ drücken, damit nichts verloren geht.\n• Große oder mehrere Fotos entfernen.\n\nDie letzten Änderungen sind sonst NICHT dauerhaft gesichert.');
@@ -392,28 +627,23 @@ function autoSave(){ clearTimeout(autoSaveTimer); autoSaveTimer=setTimeout(()=>p
 function saveNow(){ clearTimeout(autoSaveTimer); persist().then(ok=>{ if(ok) alert('Tagesbericht wurde lokal gespeichert.'); }); }
 
 /* ---- Archiv / Übersicht ---- */
-function setVisible(el, show){ if(el) el.style.display = show ? '' : 'none'; }
 function showArchive(){
   clearTimeout(autoSaveTimer); if(currentId) persist();   // offenen Stand sichern, bevor wir wechseln
-  mode='archive';
-  document.querySelectorAll('section').forEach(s=>s.classList.remove('visible'));
+  mode='archive'; activeId='archiv';
+  document.querySelectorAll('main > section').forEach(s=>s.classList.remove('visible'));
   document.getElementById('archiv').classList.add('visible');
-  setVisible(document.getElementById('nav'), false);
+  setVisible(document.getElementById('navList'), false);
+  setVisible(document.getElementById('tabs'), false);
   setVisible(document.getElementById('toolbar'), false);
-  setVisible(document.getElementById('statusbar'), false);
+  markActive('archiv');
+  updateTopbar('archiv');
   renderArchive();
 }
 function showEditor(){
-  mode='editor';
-  setVisible(document.getElementById('nav'), true);
+  setVisible(document.getElementById('navList'), true);
+  setVisible(document.getElementById('tabs'), true);
   setVisible(document.getElementById('toolbar'), true);
-  setVisible(document.getElementById('statusbar'), true);
-  const lbl=document.getElementById('currentLabel');
-  if(lbl) lbl.textContent = (state.fields.projekt||'Ohne Bauvorhaben')+' · '+(state.fields.datum||'');
-  document.querySelectorAll('section').forEach(s=>s.classList.remove('visible'));
-  document.getElementById('basis').classList.add('visible');
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  const firstTab=document.querySelector('#tabs .tab'); if(firstTab) firstTab.classList.add('active');
+  showTab('uebersicht');
 }
 async function renderArchive(){
   let reports=[];
@@ -421,7 +651,7 @@ async function renderArchive(){
   // Sortierung: nach Datum absteigend (neueste zuerst), bei Gleichstand nach Speicherzeit.
   reports.sort((a,b)=>{ const da=(a.state&&a.state.fields&&a.state.fields.datum)||'', db_=(b.state&&b.state.fields&&b.state.fields.datum)||''; if(da!==db_) return db_.localeCompare(da); return (b.updatedAt||0)-(a.updatedAt||0); });
   const list=document.getElementById('archivList');
-  if(!reports.length){ list.innerHTML='<p class="hint">Noch keine Berichte. Lege mit „+ Neuer Bericht“ den ersten an.</p>'; return; }
+  if(!reports.length){ list.innerHTML='<div class="et-empty">Noch keine Berichte. Lege mit „+ Neuer Bericht" den ersten an.</div>'; return; }
   list.innerHTML = reports.map(r=>{
     const f=(r.state&&r.state.fields)||{};
     const datum=escapeHtml(f.datum||'—');
@@ -430,9 +660,9 @@ async function renderArchive(){
     const fotos=(r.state&&r.state.photos&&r.state.photos.length)||0;
     const open=currentId===r.id;
     return `<div class="archiv-item${open?' current':''}">
-      <div class="archiv-meta"><b>${datum}</b> – ${projekt}${nr?` <span class="pill">Nr. ${nr}</span>`:''}${fotos?` <span class="pill">${fotos} Foto${fotos>1?'s':''}</span>`:''}${open?' <span class="pill">geöffnet</span>':''}</div>
-      <div class="actions">
-        <button class="btn primary" onclick="openReport('${r.id}')">Öffnen</button>
+      <div class="archiv-meta"><b>${datum}</b> &nbsp;·&nbsp; ${projekt}${nr?` <span class="pill">Nr. ${nr}</span>`:''}${fotos?` <span class="pill">${fotos} Foto${fotos>1?'s':''}</span>`:''}${open?' <span class="pill">geöffnet</span>':''}</div>
+      <div class="row-actions">
+        <button class="btn accent" onclick="openReport('${r.id}')">Öffnen</button>
         <button class="btn" onclick="duplicateReport('${r.id}')">Duplizieren</button>
         <button class="btn danger" onclick="deleteReport('${r.id}')">Löschen</button>
       </div>
