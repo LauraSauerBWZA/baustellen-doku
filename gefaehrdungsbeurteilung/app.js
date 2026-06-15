@@ -345,23 +345,47 @@ function exportJson() {
   URL.revokeObjectURL(url);
 }
 
+// Gemeinsamer Import: unterscheidet sauber Backup-Sammeldatei vs. einzelne Beurteilung.
 function importJson(file) {
   const reader = new FileReader();
   reader.onload = async () => {
     try {
       const parsed = JSON.parse(reader.result);
-      const { schema, ...rest } = parsed;   // schema entfernen (Dateien ohne schema = v0)
-      currentId = genId();                  // Import = NEUE Beurteilung, überschreibt keine bestehende
-      applyData(clone(BLANK_STATE));        // auf Standard zurücksetzen ...
-      applyData(rest);                      // ... dann importierte Werte einspielen
-      const ok = await saveData(false);
-      showEditor();
-      toast(ok ? 'Importiert – als neue Beurteilung angelegt.' : 'Importiert, aber Speichern fehlgeschlagen.');
+      if(parsed && parsed.type==='gbu-backup' && Array.isArray(parsed.beurteilungen)) await importBackup(parsed.beurteilungen);
+      else await importSingle(parsed);
     } catch (e) {
       alert('Die Datei konnte nicht importiert werden. Bitte JSON-Datei prüfen.');
     }
   };
   reader.readAsText(file);
+}
+async function importSingle(parsed){
+  const { schema, ...rest } = parsed;     // schema entfernen (Dateien ohne schema = v0)
+  currentId = genId();                    // Import = NEUE Beurteilung, überschreibt keine bestehende
+  applyData(clone(BLANK_STATE));          // auf Standard zurücksetzen ...
+  applyData(rest);                        // ... dann importierte Werte einspielen
+  const ok = await saveData(false);
+  showEditor();
+  toast(ok ? 'Importiert – als neue Beurteilung angelegt.' : 'Importiert, aber Speichern fehlgeschlagen.');
+}
+async function importBackup(list){
+  let n=0;
+  for(const entry of list){ try{ const { schema, ...rest }=entry; await idbPut({ id: genId(), updatedAt: Date.now(), schema: 1, state: rest }); n++; }catch(err){ console.error(err); } }
+  showArchive();
+  alert(n+' Beurteilung'+(n===1?'':'en')+' aus dem Backup importiert (als neue Einträge angelegt).');
+}
+// Sammel-Backup: alle Beurteilungen in EINE Datei mit klarem Wrapper.
+async function exportAll(){
+  let items=[];
+  try{ items=await idbGetAll(); }catch(err){ console.error(err); }
+  if(!items.length){ alert('Es sind keine Beurteilungen vorhanden.'); return; }
+  items.sort((a,b)=>{ const da=(a.state&&a.state.datum)||'', db=(b.state&&b.state.datum)||''; if(da!==db) return db.localeCompare(da); return (b.updatedAt||0)-(a.updatedAt||0); });
+  const payload={ schema:1, type:'gbu-backup', exportiert:new Date().toISOString(), beurteilungen: items.map(r=>({ schema:1, ...r.state })) };
+  const blob=new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download=`gbu-industrieklettern-backup-${today()}.json`;
+  a.click(); URL.revokeObjectURL(url);
 }
 
 let toastTimer;
@@ -402,6 +426,8 @@ async function init() {
   document.getElementById('importFile').addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
   document.getElementById('newBtn').addEventListener('click', newBeurteilung);
   document.getElementById('toArchiveBtn').addEventListener('click', showArchive);
+  document.getElementById('exportAllBtn').addEventListener('click', exportAll);
+  document.getElementById('importAllFile').addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));  // erkennt Backup vs. Einzeldatei
   document.getElementById('resetBtn').addEventListener('click', () => {
     if(!currentId) return;
     if (confirm('Alle Eingaben in DIESER Beurteilung wirklich löschen? (Andere Beurteilungen im Archiv bleiben erhalten.)')) {

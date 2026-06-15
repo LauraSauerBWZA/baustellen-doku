@@ -4,7 +4,7 @@
    Pfade sind relativ zur SW-Position, damit es lokal UND unter
    GitHub Pages (/baustellen-doku/) funktioniert. */
 
-const CACHE = 'baustellen-doku-v3';
+const CACHE = 'baustellen-doku-v4';
 
 // Alle Pfade relativ zum SW-Verzeichnis (Projekt-Root).
 const ASSETS = [

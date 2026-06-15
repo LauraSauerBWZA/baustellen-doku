@@ -29,7 +29,12 @@
     <div class="card">
       <h2>Beurteilungs-Archiv</h2>
       <p class="hint">Alle Gefährdungsbeurteilungen liegen lokal in diesem Browser (IndexedDB). Wähle eine Beurteilung zum Öffnen oder lege eine neue an. Es werden keine Daten an einen Server übertragen.</p>
-      <button id="newBtn" class="primary">+ Neue Beurteilung</button>
+      <div class="archiv-actions" style="margin-bottom:14px">
+        <button id="newBtn" class="primary">+ Neue Beurteilung</button>
+        <button id="exportAllBtn" class="secondary">Alle exportieren</button>
+        <label class="file-btn secondary">Alle importieren<input id="importAllFile" type="file" accept="application/json" hidden></label>
+      </div>
+      <p class="hint">„Alle exportieren" sichert alle Beurteilungen als ein Backup. Einzelne Beurteilungen exportierst/importierst du weiterhin in der geöffneten Beurteilung.</p>
       <div id="archivList"></div>
     </div>
   </section>
