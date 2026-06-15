@@ -34,27 +34,11 @@
     .hintbox strong{color:var(--text)}
     .intro p{margin:0 0 10px;color:#374151}
     .intro p:last-child{margin-bottom:0}
-    .q{margin:0 0 16px;break-inside:avoid;page-break-inside:avoid}
+    .q{margin:0 0 16px}
     .q:last-child{margin-bottom:0}
     .q label{display:block;font-weight:600;margin-bottom:6px}
     .answer{min-height:46px;resize:vertical;overflow:hidden}
-    .print-answer{display:none}
-    .only-print{display:none}
     @media(max-width:680px){.meta-grid{grid-template-columns:1fr}}
-    @media print{
-      body{background:#fff;color:#000}
-      .no-print{display:none!important}
-      header{background:#fff;color:#000;border-bottom:2px solid #111;padding:0 0 12px;margin-bottom:14px}
-      header p{color:#333}
-      main{margin:0;padding:0;max-width:none}
-      .card{box-shadow:none;border:1px solid #999;border-radius:0;padding:12px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
-      .hintbox{display:none}
-      .only-print{display:block}
-      .answer{display:none}
-      .print-answer{display:block;white-space:pre-wrap;word-wrap:break-word;border-bottom:1px solid #ccc;min-height:18px;padding:2px 0}
-      .q{break-inside:avoid;page-break-inside:avoid}
-      h2{break-after:avoid;page-break-after:avoid}
-    }
   </style>
 </head>
 <body>
@@ -65,12 +49,11 @@
   </div>
 </header>
 
-<nav class="no-print">
+<nav>
   <div class="wrap">
     <span class="status" id="saveState">bereit</span>
     <div class="actions">
-      <button class="btn primary" onclick="window.print()">Als PDF speichern</button>
-      <button class="btn" onclick="exportTxt()">Antworten exportieren</button>
+      <button class="btn primary" onclick="exportMarkdown()">Antworten als Markdown exportieren</button>
       <button class="btn danger" onclick="clearAll()">Antworten löschen</button>
     </div>
   </div>
@@ -86,12 +69,10 @@
     </div>
   </div>
 
-  <div class="only-print" id="printHeader"></div>
-
-  <div class="hintbox no-print">
+  <div class="hintbox">
     Stichworte genügen. Die Antworten werden automatisch in diesem Browser zwischengespeichert.
-    Wenn du fertig bist: oben auf <strong>„Als PDF speichern“</strong> und das PDF an <strong>{{KONTAKT}}</strong>
-    senden – alternativ <strong>„Antworten exportieren“</strong> und die Datei schicken.
+    Wenn du fertig bist: oben auf <strong>„Antworten als Markdown exportieren“</strong> und die Datei
+    an <strong>{{KONTAKT}}</strong> senden.
     Es werden keine Daten verschickt oder hochgeladen.
   </div>
 
@@ -180,7 +161,6 @@ function render(){
       return `<div class="q">
         <label for="${k}">${md(q)}</label>
         <textarea id="${k}" data-key="${k}" class="answer" rows="2" placeholder="Antwort (Stichworte genügen)"></textarea>
-        <div class="print-answer" id="${k}-print"></div>
       </div>`;
     }).join('');
     return `<section class="card"><h2>${head}</h2>${qs}</section>`;
@@ -201,67 +181,58 @@ function persist(){
   }catch(err){
     console.error('Speichern fehlgeschlagen:', err);
     setStatus('NICHT gespeichert – Speicher voll', true);
-    if(!saveErrorShown){ saveErrorShown=true; alert('Hinweis: Die Antworten konnten nicht im Browser zwischengespeichert werden (Speicher voll oder privater Modus). Bitte „Antworten exportieren“, damit nichts verloren geht.'); }
+    if(!saveErrorShown){ saveErrorShown=true; alert('Hinweis: Die Antworten konnten nicht im Browser zwischengespeichert werden (Speicher voll oder privater Modus). Bitte „Antworten als Markdown exportieren“, damit nichts verloren geht.'); }
     return false;
   }
 }
 function autoSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(persist, 500); }   // Debounce ~500 ms
 
 function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; }
-function syncPrint(el){ const m=document.getElementById(el.dataset.key+'-print'); if(m) m.textContent=el.value; }
-function updatePrintHeader(){
-  const n=state.meta_name||'', f=state.meta_firma||'', d=state.meta_datum||'';
-  document.getElementById('printHeader').innerHTML =
-    `<div style="margin-bottom:12px"><strong>Fragebogen – Technische Architektur</strong><br>`+
-    `Name / Ansprechpartner: ${escapeHtml(n)||'—'} &nbsp;·&nbsp; Unternehmen: ${escapeHtml(f)||'—'} &nbsp;·&nbsp; Datum: ${escapeHtml(d)||'—'}</div>`;
-}
 
 function bind(){
   document.querySelectorAll('[data-key]').forEach(el=>{
     if(state[el.dataset.key]!==undefined) el.value=state[el.dataset.key];
-    if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); }
+    if(el.tagName==='TEXTAREA') autoGrow(el);
     el.addEventListener('input',()=>{
       state[el.dataset.key]=el.value;
-      if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); }
-      updatePrintHeader();
+      if(el.tagName==='TEXTAREA') autoGrow(el);
       autoSave();
     });
   });
-  updatePrintHeader();
 }
 
-function exportTxt(){
+// Export als gut strukturierte Markdown-Datei (Reihenfolge exakt wie auf der Seite).
+function exportMarkdown(){
   const lines=[];
-  lines.push('Fragebogen – Technische Architektur');
+  lines.push('# Fragebogen – Antworten');
   lines.push('');
-  lines.push('Name / Ansprechpartner: '+(state.meta_name||''));
-  lines.push('Unternehmen: '+(state.meta_firma||''));
-  lines.push('Datum: '+(state.meta_datum||''));
+  lines.push('**Ansprechpartner:** '+(state.meta_name||''));
+  lines.push('**Unternehmen:** '+(state.meta_firma||''));
+  lines.push('**Datum:** '+(state.meta_datum||''));
   lines.push('');
   blocks.forEach((b,bi)=>{
-    lines.push('='.repeat(60));
-    lines.push((b.star?'★ ':'')+b.title);
+    lines.push('## '+(b.star?'★ ':'')+b.title);   // Blocktitel wortgetreu inkl. ★
     lines.push('');
     b.questions.forEach((q,qi)=>{
       const a=(state[keyOf(bi,qi)]||'').trim();
-      lines.push('Frage: '+plain(q));
-      lines.push('Antwort: '+(a||'(keine Angabe)'));
+      lines.push('**'+plain(q)+'**');             // Frage fett (inneres ** entfernt, sonst kaputtes Markdown)
+      lines.push(a || '_(keine Angabe)_');         // mehrzeilige Antworten bleiben mehrzeilig erhalten
       lines.push('');
     });
   });
-  const blob=new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  const blob=new Blob([lines.join('\n')], {type:'text/markdown;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   const d=(state.meta_datum)||new Date().toISOString().slice(0,10);
-  a.download=`fragebogen-antworten-${d}.txt`; a.click(); URL.revokeObjectURL(a.href);
+  a.download=`fragebogen-antworten-${d}.md`; a.click(); URL.revokeObjectURL(a.href);
 }
 
 function clearAll(){
   if(confirm('Alle Antworten in diesem Fragebogen wirklich löschen? (Für einen frischen Start.)')){
     state={}; try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-    document.querySelectorAll('[data-key]').forEach(el=>{ el.value=''; if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); } });
+    document.querySelectorAll('[data-key]').forEach(el=>{ el.value=''; if(el.tagName==='TEXTAREA') autoGrow(el); });
     state.meta_datum=new Date().toISOString().slice(0,10);
     const dt=document.getElementById('meta_datum'); if(dt) dt.value=state.meta_datum;
-    updatePrintHeader(); setStatus('bereit', false);
+    setStatus('bereit', false);
   }
 }
 
