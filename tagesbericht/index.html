@@ -61,7 +61,12 @@
     <div class="card">
       <h2>Berichte-Archiv</h2>
       <p class="hint">Alle Tagesberichte liegen lokal in diesem Browser (IndexedDB). Wähle einen Bericht zum Öffnen oder lege einen neuen an. Es werden keine Daten an einen Server übertragen.</p>
-      <div class="actions"><button class="btn primary" onclick="newReport()">+ Neuer Bericht</button></div>
+      <div class="actions">
+        <button class="btn primary" onclick="newReport()">+ Neuer Bericht</button>
+        <button class="btn" onclick="exportAll()">Alle exportieren</button>
+        <label class="btn" for="importAllInput">Alle importieren</label><input id="importAllInput" class="fileinput" type="file" accept="application/json">
+      </div>
+      <p class="hint">„Alle exportieren" sichert das gesamte Archiv als ein Backup. Einzelne Berichte exportierst/importierst du weiterhin im jeweils geöffneten Bericht.</p>
       <div id="archivList"></div>
     </div>
   </section>
@@ -291,6 +296,7 @@ function bindInputs(){
   document.querySelectorAll('[data-key]').forEach(el=>{ el.value = state.fields[el.dataset.key] || ''; el.addEventListener('input',()=>{ state.fields[el.dataset.key]=el.value; autoSave(); }); });
   document.getElementById('photoInput').addEventListener('change', handlePhotos);
   document.getElementById('importInput').addEventListener('change', importJson);
+  document.getElementById('importAllInput').addEventListener('change', importJson);  // erkennt Backup vs. Einzeldatei
 }
 function renderAll(){ Object.keys(tableDefs).forEach(renderTable); renderChecklist(); renderPhotos(); document.querySelectorAll('[data-key]').forEach(el=>{el.value=state.fields[el.dataset.key]||''}); }
 function renderTable(name){
@@ -495,18 +501,45 @@ function exportJson(){
   a.download = `bau-tagesbericht-${date}.json`; a.click(); URL.revokeObjectURL(a.href);
 }
 function normalizeState(){ state.fields ||= {}; state.tables ||= {}; state.checks ||= {}; state.photos ||= []; Object.keys(tableDefs).forEach(k=>{if(!state.tables[k]) state.tables[k]=[]}); }
+// Gemeinsamer Import: unterscheidet sauber Backup-Sammeldatei vs. einzelne Berichtsdatei.
 function importJson(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader(); reader.onload=async ev=>{ try{
     const parsed=JSON.parse(ev.target.result);
-    // schema entfernen (Version 1); Dateien ohne schema = Version 0, werden ebenso geladen.
-    const { schema, ...rest } = parsed;
-    state = rest; normalizeState();
-    currentId = genId();              // Import = NEUER Bericht im Archiv, überschreibt keinen bestehenden
-    const ok = await persist();
-    renderAll(); updateStats(); showEditor();
-    alert(ok ? 'Import erfolgreich – als neuer Bericht im Archiv angelegt.' : 'Import geladen, aber Speichern fehlgeschlagen. Bitte Speicher prüfen und „JSON exportieren“.');
+    if(parsed && parsed.type==='tagesbericht-backup' && Array.isArray(parsed.berichte)) await importBackup(parsed.berichte);
+    else await importParsedSingle(parsed);
   } catch(err){ alert('Import fehlgeschlagen: ungültige JSON-Datei.'); } }; reader.readAsText(file); e.target.value='';
+}
+// Hilfsfunktion: aus einem Einzel-Payload ({schema, ...state}) einen sauberen state bauen.
+function stateFromPayload(parsed){
+  const { schema, ...rest } = parsed;
+  const s={ fields: rest.fields||{}, tables: rest.tables||{}, checks: rest.checks||{}, photos: rest.photos||[] };
+  Object.keys(tableDefs).forEach(k=>{ if(!s.tables[k]) s.tables[k]=[]; });
+  return s;
+}
+async function importParsedSingle(parsed){
+  state = stateFromPayload(parsed); normalizeState();
+  currentId = genId();              // Import = NEUER Bericht im Archiv, überschreibt keinen bestehenden
+  const ok = await persist();
+  renderAll(); updateStats(); showEditor();
+  alert(ok ? 'Import erfolgreich – als neuer Bericht im Archiv angelegt.' : 'Import geladen, aber Speichern fehlgeschlagen. Bitte Speicher prüfen und „JSON exportieren“.');
+}
+async function importBackup(list){
+  let n=0;
+  for(const entry of list){ try{ await idbPut({id:genId(), updatedAt:Date.now(), schema:1, state:stateFromPayload(entry)}); n++; }catch(err){ console.error(err); } }
+  showArchive();
+  alert(n+' Bericht'+(n===1?'':'e')+' aus dem Backup importiert (als neue Einträge angelegt).');
+}
+// Sammel-Backup: alle Berichte in EINE Datei mit klarem Wrapper.
+async function exportAll(){
+  let reports=[];
+  try{ reports=await idbGetAll(); }catch(err){ console.error(err); }
+  if(!reports.length){ alert('Es sind keine Berichte vorhanden.'); return; }
+  reports.sort((a,b)=>{ const da=(a.state&&a.state.fields&&a.state.fields.datum)||'', db=(b.state&&b.state.fields&&b.state.fields.datum)||''; if(da!==db) return db.localeCompare(da); return (b.updatedAt||0)-(a.updatedAt||0); });
+  const payload={ schema:1, type:'tagesbericht-backup', exportiert:new Date().toISOString(), berichte: reports.map(r=>({ schema:1, ...r.state })) };
+  const blob=new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`bau-tagesbericht-backup-${today()}.json`; a.click(); URL.revokeObjectURL(a.href);
 }
 function resetAll(){
   if(!currentId) return;
