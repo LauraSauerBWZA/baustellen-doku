@@ -441,9 +441,22 @@ async function openReport(id){
     renderAll(); updateStats(); showEditor();
   }catch(err){ console.error(err); alert('Bericht konnte nicht geöffnet werden.'); }
 }
-function newReport(){
-  state=emptyState(); currentId=genId();
-  persist().then(()=>{ renderAll(); updateStats(); showEditor(); });
+// Gleichbleibende Kopf-/Stammdaten, die ein neuer Bericht vom letzten übernimmt.
+// Tagesinhalte (Datum, Berichts-Nr., Zeiten, Bereich, Tabellen, Checks, Fotos) bleiben leer.
+const STAMM_FIELDS=['projekt','auftraggeber','auftragnehmer','bauleiter'];
+async function newReport(){
+  const base=emptyState();                 // Datum=heute, alle Tagesinhalte leer
+  try{
+    const all=await idbGetAll();
+    if(all.length){
+      all.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));   // zuletzt bearbeiteter Bericht
+      const last=(all[0].state&&all[0].state.fields)||{};
+      STAMM_FIELDS.forEach(k=>{ if(last[k]) base.fields[k]=last[k]; });
+    }
+  }catch(err){ console.error(err); }
+  state=base; currentId=genId();
+  await persist();
+  renderAll(); updateStats(); showEditor();
 }
 async function duplicateReport(id){
   try{
