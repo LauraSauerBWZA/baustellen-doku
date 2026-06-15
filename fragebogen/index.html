@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fragebogen – Technische Architektur</title>
+  <style>
+    :root{
+      --bg:#f4f6f8; --card:#fff; --text:#17202a; --muted:#667085; --line:#d7dde5;
+      --primary:#1f4f82; --primary2:#2563eb; --danger:#b42318; --ok:#027a48; --warn:#b45309;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+    header{background:linear-gradient(135deg,var(--primary),#0f172a);color:#fff;padding:30px 18px}
+    .wrap{max-width:900px;margin:0 auto}
+    header h1{margin:0 0 6px;font-size:26px}
+    header p{margin:0;color:#dbeafe}
+    nav{position:sticky;top:0;z-index:20;background:#ffffffee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 18px}
+    .status{font-size:13px;color:var(--muted)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:0;border-radius:10px;padding:10px 13px;font-weight:700;cursor:pointer;background:#eef2f7;color:var(--text)}
+    .btn.primary{background:var(--primary2);color:#fff}
+    .btn.danger{background:#fee4e2;color:var(--danger)}
+    main{max-width:900px;margin:20px auto;padding:0 18px 80px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 1px 2px rgba(16,24,40,.04);padding:20px;margin-bottom:18px}
+    .card h2{margin:0 0 14px;font-size:20px}
+    .star{color:#d4a017}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr 200px;gap:12px}
+    label.field{display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:5px}
+    input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:#fff;color:var(--text)}
+    .hintbox{background:#eef2f7;border:1px solid var(--line);border-left:4px solid var(--primary2);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;font-size:15px}
+    .hintbox strong{color:var(--text)}
+    .intro p{margin:0 0 10px;color:#374151}
+    .intro p:last-child{margin-bottom:0}
+    .q{margin:0 0 16px;break-inside:avoid;page-break-inside:avoid}
+    .q:last-child{margin-bottom:0}
+    .q label{display:block;font-weight:600;margin-bottom:6px}
+    .answer{min-height:46px;resize:vertical;overflow:hidden}
+    .print-answer{display:none}
+    .only-print{display:none}
+    @media(max-width:680px){.meta-grid{grid-template-columns:1fr}}
+    @media print{
+      body{background:#fff;color:#000}
+      .no-print{display:none!important}
+      header{background:#fff;color:#000;border-bottom:2px solid #111;padding:0 0 12px;margin-bottom:14px}
+      header p{color:#333}
+      main{margin:0;padding:0;max-width:none}
+      .card{box-shadow:none;border:1px solid #999;border-radius:0;padding:12px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
+      .hintbox{display:none}
+      .only-print{display:block}
+      .answer{display:none}
+      .print-answer{display:block;white-space:pre-wrap;word-wrap:break-word;border-bottom:1px solid #ccc;min-height:18px;padding:2px 0}
+      .q{break-inside:avoid;page-break-inside:avoid}
+      h2{break-after:avoid;page-break-after:avoid}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Fragebogen – Technische Architektur</h1>
+    <p>Grundlage für den langfristigen Aufbau des Tools. Bitte direkt im Browser ausfüllen.</p>
+  </div>
+</header>
+
+<nav class="no-print">
+  <div class="wrap">
+    <span class="status" id="saveState">bereit</span>
+    <div class="actions">
+      <button class="btn primary" onclick="window.print()">Als PDF speichern</button>
+      <button class="btn" onclick="exportTxt()">Antworten exportieren</button>
+      <button class="btn danger" onclick="clearAll()">Antworten löschen</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="card">
+    <h2>Ihre Angaben</h2>
+    <div class="meta-grid">
+      <div><label class="field" for="meta_name">Name / Ansprechpartner</label><input id="meta_name" data-key="meta_name" placeholder="z. B. Max Mustermann"></div>
+      <div><label class="field" for="meta_firma">Unternehmen</label><input id="meta_firma" data-key="meta_firma" placeholder="Firmenname"></div>
+      <div><label class="field" for="meta_datum">Datum</label><input id="meta_datum" data-key="meta_datum" type="date"></div>
+    </div>
+  </div>
+
+  <div class="only-print" id="printHeader"></div>
+
+  <div class="hintbox no-print">
+    Stichworte genügen. Die Antworten werden automatisch in diesem Browser zwischengespeichert.
+    Wenn du fertig bist: oben auf <strong>„Als PDF speichern“</strong> und das PDF an <strong>{{KONTAKT}}</strong>
+    senden – alternativ <strong>„Antworten exportieren“</strong> und die Datei schicken.
+    Es werden keine Daten verschickt oder hochgeladen.
+  </div>
+
+  <div class="card intro" id="introBox"></div>
+
+  <div id="blocks"></div>
+</main>
+
+<script>
+const STORE_KEY = 'kundenfragebogen-v1';
+
+// Einleitende Hinweise – wortgetreu aus Kundenfragen-Architektur.md
+const intro = [
+  'Damit wir das Tool langfristig richtig aufbauen (wo die Daten liegen, wer worauf Zugriff hat, ob es offline funktionieren muss), brauchen wir Antworten zu den folgenden Punkten. **Stichworte genügen** – es muss nichts ausformuliert werden.',
+  'Die mit ★ markierten Blöcke sind die wichtigsten; falls die Zeit knapp ist, bitte diese zuerst.'
+];
+
+// Alle 11 Blöcke – Fragen wortgetreu aus Kundenfragen-Architektur.md (inkl. ** und ★).
+const blocks = [
+  { star:true, title:'1. Nutzer & Zugang', questions:[
+    'Wie viele Personen nutzen das Tool ungefähr?',
+    'Welche Funktionen/Rollen haben sie (z. B. Monteur/Kletterer, Bauleitung, Sicherheitsfachkraft, Büro/Verwaltung)?',
+    'Soll sich jede Person einzeln anmelden (eigener Login), oder reicht ein gemeinsamer Zugang fürs Unternehmen?'
+  ]},
+  { star:true, title:'2. Wer sieht und bearbeitet was', questions:[
+    'Soll jede Person nur ihre **eigenen** Berichte/Beurteilungen sehen, oder sollen **alle gemeinsam** auf dieselben Daten zugreifen?',
+    'Gibt es Personen, die **alles** sehen müssen (z. B. Bauleitung, Geschäftsführung, Sicherheitsfachkraft)?',
+    'Darf jeder alles bearbeiten und löschen, oder gibt es Grenzen (z. B. nur wer einen Bericht erstellt hat, darf ihn ändern)?'
+  ]},
+  { star:false, title:'3. Gemeinsames Arbeiten', questions:[
+    'Arbeiten mehrere Personen **gleichzeitig** am selben Bericht, oder immer nur eine Person pro Bericht?',
+    'Wird ein Bericht von einer Person erstellt und von einer anderen geprüft oder freigegeben?'
+  ]},
+  { star:true, title:'4. Freigabe & Verbindlichkeit (besonders Gefährdungsbeurteilung)', questions:[
+    'Gibt es einen festen Freigabe-/Unterschriftsablauf? Wer gibt frei?',
+    'Soll ein einmal freigegebenes Dokument danach **gesperrt / unveränderbar** sein?',
+    'Muss nachvollziehbar sein, **wer wann was geändert** hat (Änderungsprotokoll)?'
+  ]},
+  { star:true, title:'5. Geräte & Internet', questions:[
+    'Auf welchen Geräten wird gearbeitet (Handy, Tablet, PC – und welche überwiegend)?',
+    'Nutzt dieselbe Person **mehrere Geräte** und erwartet überall denselben Stand?',
+    'Gibt es Einsatzorte mit schlechtem oder keinem Internet (Lager, Baustelle, Höhe)? Wie häufig? Muss das Tool dort zuverlässig funktionieren?'
+  ]},
+  { star:false, title:'6. Ablauf Tagesbericht', questions:[
+    'Entsteht **ein** Tagesbericht pro Tag und Baustelle – oder pro Person – oder pro Tag insgesamt?',
+    'Werden mehrere Baustellen parallel dokumentiert?',
+    'Was passiert mit einem fertigen Tagesbericht – wird er weitergegeben, gesammelt, zusammengeführt? An wen?'
+  ]},
+  { star:false, title:'7. Aufbewahrung, Recht & Daten', questions:[
+    'Wie lange müssen Berichte und Beurteilungen aufbewahrt werden (gesetzliche oder interne Fristen)?',
+    'Wem gehören die Daten, und wer ist im Unternehmen dafür verantwortlich?',
+    'Stehen personenbezogene Daten drin (z. B. Namen von Mitarbeitern)? Gibt es Vorgaben zu Datenschutz oder Löschung?',
+    'Wie schwerwiegend wäre ein Datenverlust einzuschätzen? Wer kümmert sich heute um Sicherungen?'
+  ]},
+  { star:false, title:'8. Weiterverarbeitung & Schnittstellen', questions:[
+    'Was geschieht mit einem fertigen Dokument (ausdrucken, als PDF ablegen, per E-Mail versenden, in ein anderes System übertragen)?',
+    'Muss es in ein **bestehendes System** fließen (z. B. Abrechnung, Zeiterfassung, Dokumentenablage, ERP)?',
+    'Welche Ausgabeformate werden gebraucht (Druck, PDF, Excel, …)?'
+  ]},
+  { star:true, title:'9. Bestehende IT im Unternehmen', questions:[
+    'Gibt es bereits einen **Server** oder eine zentrale Datenablage im Unternehmen?',
+    'Gibt es Firmen-Logins (z. B. Microsoft 365 / Google Workspace), über die man sich anmelden könnte?',
+    'Soll das Tool nur **im Firmennetz / per VPN** erreichbar sein, oder von überall (z. B. von der Baustelle über Mobilfunk)?'
+  ]},
+  { star:false, title:'10. Umfang', questions:[
+    'Wie viele Berichte und Beurteilungen entstehen ungefähr pro Woche oder Monat?',
+    'Wie viele Fotos typischerweise pro Bericht?'
+  ]},
+  { star:false, title:'11. Inhalt & Felder', questions:[
+    'Stimmen die aktuell erfassten Felder mit der Praxis überein? Fehlt etwas Wichtiges? Ist etwas überflüssig?',
+    'Welche Felder **müssen zwingend** ausgefüllt sein, bevor ein Bericht freigegeben oder gedruckt werden darf?'
+  ]}
+];
+
+function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+function md(s){ return escapeHtml(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>'); }     // **fett** -> <strong>
+function plain(s){ return s.replace(/\*\*(.+?)\*\*/g,'$1'); }                                 // ** entfernen (Textexport)
+function keyOf(bi,qi){ return `b${bi}_q${qi}`; }
+
+function render(){
+  document.getElementById('introBox').innerHTML = '<div class="intro">'+intro.map(p=>`<p>${md(p)}</p>`).join('')+'</div>';
+  document.getElementById('blocks').innerHTML = blocks.map((b,bi)=>{
+    const head = `${b.star?'<span class="star">★</span> ':''}${escapeHtml(b.title)}`;
+    const qs = b.questions.map((q,qi)=>{
+      const k = keyOf(bi,qi);
+      return `<div class="q">
+        <label for="${k}">${md(q)}</label>
+        <textarea id="${k}" data-key="${k}" class="answer" rows="2" placeholder="Antwort (Stichworte genügen)"></textarea>
+        <div class="print-answer" id="${k}-print"></div>
+      </div>`;
+    }).join('');
+    return `<section class="card"><h2>${head}</h2>${qs}</section>`;
+  }).join('');
+}
+
+let state = {};
+function load(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) state=JSON.parse(raw)||{}; }catch(e){ console.warn(e); } if(!state || typeof state!=='object') state={}; }
+
+let saveTimer, saveErrorShown=false;
+function setStatus(text, error){ const el=document.getElementById('saveState'); el.textContent=text; el.style.color=error?'var(--danger)':''; }
+function persist(){
+  try{
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    setStatus('gespeichert', false); saveErrorShown=false;
+    clearTimeout(persist._t); persist._t=setTimeout(()=>{ if(document.getElementById('saveState').textContent==='gespeichert') setStatus('bereit', false); },1200);
+    return true;
+  }catch(err){
+    console.error('Speichern fehlgeschlagen:', err);
+    setStatus('NICHT gespeichert – Speicher voll', true);
+    if(!saveErrorShown){ saveErrorShown=true; alert('Hinweis: Die Antworten konnten nicht im Browser zwischengespeichert werden (Speicher voll oder privater Modus). Bitte „Antworten exportieren“, damit nichts verloren geht.'); }
+    return false;
+  }
+}
+function autoSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(persist, 500); }   // Debounce ~500 ms
+
+function autoGrow(el){ el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; }
+function syncPrint(el){ const m=document.getElementById(el.dataset.key+'-print'); if(m) m.textContent=el.value; }
+function updatePrintHeader(){
+  const n=state.meta_name||'', f=state.meta_firma||'', d=state.meta_datum||'';
+  document.getElementById('printHeader').innerHTML =
+    `<div style="margin-bottom:12px"><strong>Fragebogen – Technische Architektur</strong><br>`+
+    `Name / Ansprechpartner: ${escapeHtml(n)||'—'} &nbsp;·&nbsp; Unternehmen: ${escapeHtml(f)||'—'} &nbsp;·&nbsp; Datum: ${escapeHtml(d)||'—'}</div>`;
+}
+
+function bind(){
+  document.querySelectorAll('[data-key]').forEach(el=>{
+    if(state[el.dataset.key]!==undefined) el.value=state[el.dataset.key];
+    if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); }
+    el.addEventListener('input',()=>{
+      state[el.dataset.key]=el.value;
+      if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); }
+      updatePrintHeader();
+      autoSave();
+    });
+  });
+  updatePrintHeader();
+}
+
+function exportTxt(){
+  const lines=[];
+  lines.push('Fragebogen – Technische Architektur');
+  lines.push('');
+  lines.push('Name / Ansprechpartner: '+(state.meta_name||''));
+  lines.push('Unternehmen: '+(state.meta_firma||''));
+  lines.push('Datum: '+(state.meta_datum||''));
+  lines.push('');
+  blocks.forEach((b,bi)=>{
+    lines.push('='.repeat(60));
+    lines.push((b.star?'★ ':'')+b.title);
+    lines.push('');
+    b.questions.forEach((q,qi)=>{
+      const a=(state[keyOf(bi,qi)]||'').trim();
+      lines.push('Frage: '+plain(q));
+      lines.push('Antwort: '+(a||'(keine Angabe)'));
+      lines.push('');
+    });
+  });
+  const blob=new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  const d=(state.meta_datum)||new Date().toISOString().slice(0,10);
+  a.download=`fragebogen-antworten-${d}.txt`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function clearAll(){
+  if(confirm('Alle Antworten in diesem Fragebogen wirklich löschen? (Für einen frischen Start.)')){
+    state={}; try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    document.querySelectorAll('[data-key]').forEach(el=>{ el.value=''; if(el.tagName==='TEXTAREA'){ autoGrow(el); syncPrint(el); } });
+    state.meta_datum=new Date().toISOString().slice(0,10);
+    const dt=document.getElementById('meta_datum'); if(dt) dt.value=state.meta_datum;
+    updatePrintHeader(); setStatus('bereit', false);
+  }
+}
+
+function init(){
+  render();
+  load();
+  if(!state.meta_datum) state.meta_datum=new Date().toISOString().slice(0,10);
+  bind();
+}
+init();
+</script>
+</body>
+</html>
