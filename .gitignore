@@ -11,6 +11,7 @@ PROMPT/
 BERICHTE/
 docker/
 CLAUDE.md
+Kundenfragen-Architektur.md
 
 # Lokale Export-Dateien der Tools
 *-tagesbericht-*.json
