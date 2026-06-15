@@ -229,6 +229,9 @@ function saveData(showMessage = true) {
 // Tippen entkoppeln, damit nicht bei jedem Tastendruck geschrieben wird.
 function autoSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>saveData(false), 400); }
 function setSaveError(show){
+  // Topbar-Chip spiegelt den Speicherzustand (grüner Punkt = ok, rot = Fehler).
+  const chip = document.getElementById('saveChipText'); if(chip) chip.textContent = show ? 'Nicht gespeichert' : 'Lokal gespeichert';
+  const dot = document.getElementById('saveChipDot'); if(dot) dot.style.background = show ? 'var(--danger)' : '#15803d';
   let el = document.getElementById('saveError');
   if(!el){
     el = document.createElement('div'); el.id = 'saveError'; el.className = 'no-print';
@@ -249,12 +252,14 @@ function showArchive(){
   setVisible(document.getElementById('archivView'), true);
   setVisible(document.querySelector('.layout'), false);
   setVisible(document.querySelector('.top-actions'), false);
+  setVisible(document.getElementById('sideEditor'), false);   // Editor-Navigation in der Sidebar aus
   renderArchive();
 }
 function showEditor(){
   setVisible(document.getElementById('archivView'), false);
   const layout = document.querySelector('.layout'); if(layout) layout.style.display='';
   setVisible(document.querySelector('.top-actions'), true);
+  setVisible(document.getElementById('sideEditor'), true);    // Editor-Navigation in der Sidebar an
   window.scrollTo(0,0);
 }
 async function renderArchive(){
