@@ -16,7 +16,8 @@
       <h1>Gefährdungsbeurteilung</h1>
       <p>Industrieklettern im Hochregallager</p>
     </div>
-    <nav class="top-actions">
+    <nav class="top-actions" style="display:none">
+      <button id="toArchiveBtn" class="secondary">← Übersicht</button>
       <button id="saveBtn" class="secondary">Speichern</button>
       <button id="exportBtn" class="secondary">JSON exportieren</button>
       <label class="file-btn secondary">JSON importieren<input id="importFile" type="file" accept="application/json" hidden></label>
@@ -24,7 +25,16 @@
     </nav>
   </header>
 
-  <main class="layout">
+  <section id="archivView" class="archiv-view no-print">
+    <div class="card">
+      <h2>Beurteilungs-Archiv</h2>
+      <p class="hint">Alle Gefährdungsbeurteilungen liegen lokal in diesem Browser (IndexedDB). Wähle eine Beurteilung zum Öffnen oder lege eine neue an. Es werden keine Daten an einen Server übertragen.</p>
+      <button id="newBtn" class="primary">+ Neue Beurteilung</button>
+      <div id="archivList"></div>
+    </div>
+  </section>
+
+  <main class="layout" style="display:none">
     <aside class="sidebar no-print">
       <div class="progress-card">
         <strong>Fortschritt</strong>

@@ -1,5 +1,27 @@
 const STORAGE_KEY = 'gb-industrieklettern-hochregal-v1';
 
+/* ---- IndexedDB-Archiv für die GBU (eigene DB, getrennt vom Tagesbericht) ---- */
+const DB_NAME = 'gbu-industrieklettern', DB_VERSION = 1, STORE = 'beurteilungen';
+let dbPromise = null;
+function openDB(){
+  if(dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = ()=>{ const db=req.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+  return dbPromise;
+}
+function idbPut(rec){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('Transaktion abgebrochen')); })); }
+function idbGet(id){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(STORE,'readonly').objectStore(STORE).get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); })); }
+function idbGetAll(){ return openDB().then(db=>new Promise((res,rej)=>{ const r=db.transaction(STORE,'readonly').objectStore(STORE).getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); })); }
+function idbDelete(id){ return openDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); tx.objectStore(STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function genId(){ return 'g-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8); }
+function today(){ return new Date().toISOString().slice(0,10); }
+const clone = o => JSON.parse(JSON.stringify(o));
+let currentId = null;
+
 const alternatives = [
   'Hubarbeitsbühne geprüft',
   'Gerüst / Arbeitsplattform geprüft',
@@ -187,14 +209,118 @@ function applyData(data) {
   updateProgress();
 }
 
+/* Zentraler Speicherpfad – schreibt die offene Beurteilung nach IndexedDB.
+   Gibt ein Promise<boolean> zurück; sichtbarer Fehlerstatus statt lautlosem Scheitern. */
+let saveErrorShown = false, saveTimer;
 function saveData(showMessage = true) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(collectData()));
-  if (showMessage) toast('Gespeichert.');
+  if(!currentId) return Promise.resolve(false);
+  const rec = { id: currentId, updatedAt: Date.now(), schema: 1, state: collectData() };
+  return idbPut(rec).then(()=>{
+    setSaveError(false); saveErrorShown = false;
+    if (showMessage) toast('Gespeichert.');
+    return true;
+  }).catch(err=>{
+    console.error('Speichern fehlgeschlagen:', err);
+    setSaveError(true);
+    if(!saveErrorShown){ saveErrorShown = true; alert('Speichern fehlgeschlagen: Der lokale Datenspeicher (IndexedDB) konnte nicht beschrieben werden – möglicherweise voll oder im privaten Modus blockiert.\n\nBitte „JSON exportieren“, damit nichts verloren geht.'); }
+    return false;
+  });
+}
+// Tippen entkoppeln, damit nicht bei jedem Tastendruck geschrieben wird.
+function autoSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(()=>saveData(false), 400); }
+function setSaveError(show){
+  let el = document.getElementById('saveError');
+  if(!el){
+    el = document.createElement('div'); el.id = 'saveError'; el.className = 'no-print';
+    el.style.cssText = 'position:fixed;left:18px;bottom:18px;background:#fee4e2;color:#b42318;border:1px solid #b42318;padding:10px 14px;border-radius:10px;z-index:99;font-weight:700;max-width:320px';
+    el.textContent = 'NICHT gespeichert – Speicher voll oder blockiert. Bitte JSON exportieren.';
+    document.body.appendChild(el);
+  }
+  el.hidden = !show;
 }
 
-function loadData() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) applyData(JSON.parse(saved));
+/* ---- Archiv / Übersicht ---- */
+let BLANK_STATE = null;                 // Standardzustand inkl. Default-Maßnahmen
+function setVisible(el, show){ if(el) el.style.display = show ? '' : 'none'; }
+function esc(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+function setField(name,val){ const el=document.querySelector(`[data-field="${name}"]`); if(!el) return; if(el.type==='checkbox') el.checked=Boolean(val); else el.value=val; }
+function showArchive(){
+  if(currentId) saveData(false);
+  setVisible(document.getElementById('archivView'), true);
+  setVisible(document.querySelector('.layout'), false);
+  setVisible(document.querySelector('.top-actions'), false);
+  renderArchive();
+}
+function showEditor(){
+  setVisible(document.getElementById('archivView'), false);
+  const layout = document.querySelector('.layout'); if(layout) layout.style.display='';
+  setVisible(document.querySelector('.top-actions'), true);
+  window.scrollTo(0,0);
+}
+async function renderArchive(){
+  let items = [];
+  try{ items = await idbGetAll(); }catch(err){ console.error(err); }
+  // Sortierung: nach Datum absteigend (neueste zuerst), Tiebreak Speicherzeit.
+  items.sort((a,b)=>{ const da=(a.state&&a.state.datum)||'', db=(b.state&&b.state.datum)||''; if(da!==db) return db.localeCompare(da); return (b.updatedAt||0)-(a.updatedAt||0); });
+  const list = document.getElementById('archivList');
+  if(!items.length){ list.innerHTML = '<p class="hint">Noch keine Beurteilungen. Lege mit „+ Neue Beurteilung“ die erste an.</p>'; return; }
+  list.innerHTML = items.map(r=>{
+    const s = r.state || {};
+    const datum = esc(s.datum || '—');
+    const ort = esc(s.einsatzort || s.arbeitsbereich || 'Ohne Einsatzort');
+    const firma = esc(s.unternehmen || '');
+    const open = currentId===r.id;
+    return `<div class="archiv-item${open?' current':''}">
+      <div class="archiv-meta"><b>${datum}</b> – ${ort}${firma?` <span class="pill">${firma}</span>`:''}${open?' <span class="pill">geöffnet</span>':''}</div>
+      <div class="archiv-actions">
+        <button class="primary" onclick="openBeurteilung('${r.id}')">Öffnen</button>
+        <button class="secondary" onclick="duplicateBeurteilung('${r.id}')">Duplizieren</button>
+        <button class="secondary danger-inline" onclick="deleteBeurteilung('${r.id}')">Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function openBeurteilung(id){
+  try{
+    const rec = await idbGet(id);
+    if(!rec){ alert('Beurteilung nicht gefunden.'); return renderArchive(); }
+    currentId = id;
+    applyData(clone(BLANK_STATE));      // erst auf Standard zurücksetzen ...
+    applyData(rec.state);               // ... dann gespeicherten Stand einspielen
+    showEditor();
+  }catch(err){ console.error(err); alert('Beurteilung konnte nicht geöffnet werden.'); }
+}
+async function newBeurteilung(){
+  currentId = genId();
+  applyData(clone(BLANK_STATE));
+  setField('datum', today());
+  await saveData(false);
+  showEditor();
+}
+async function duplicateBeurteilung(id){
+  try{
+    const rec = await idbGet(id); if(!rec) return;
+    await idbPut({ id: genId(), updatedAt: Date.now(), schema: 1, state: clone(rec.state) });
+    renderArchive(); toast('Als neue Kopie angelegt.');
+  }catch(err){ console.error(err); alert('Duplizieren fehlgeschlagen.'); }
+}
+async function deleteBeurteilung(id){
+  if(!confirm('Diese Beurteilung endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return;
+  try{ await idbDelete(id); if(currentId===id) currentId=null; renderArchive(); }
+  catch(err){ console.error(err); alert('Löschen fehlgeschlagen.'); }
+}
+
+/* ---- Einmalige, nicht-destruktive Migration aus localStorage ---- */
+async function migrateFromLocalStorage(){
+  const MIG_FLAG = 'gbu-migrated-idb';
+  if(localStorage.getItem(MIG_FLAG)==='1') return;
+  let raw=null; try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
+  if(!raw){ localStorage.setItem(MIG_FLAG,'1'); return; }
+  let old=null; try{ old = JSON.parse(raw); }catch(e){ console.warn('Alte GBU nicht lesbar – bleibt unangetastet liegen.'); return; }
+  const id = genId();
+  await idbPut({ id, updatedAt: Date.now(), schema: 1, state: old });   // wirft bei Fehler → Flag NICHT gesetzt, alte Daten bleiben
+  const check = await idbGet(id);                                       // erst nach nachweislichem Schreiben aufräumen
+  if(check){ localStorage.setItem(MIG_FLAG,'1'); try{ localStorage.removeItem(STORAGE_KEY); }catch(e){} }
 }
 
 function updateProgress() {
@@ -221,12 +347,16 @@ function exportJson() {
 
 function importJson(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
-      const data = JSON.parse(reader.result);
-      applyData(data);
-      saveData(false);
-      toast('Importiert und gespeichert.');
+      const parsed = JSON.parse(reader.result);
+      const { schema, ...rest } = parsed;   // schema entfernen (Dateien ohne schema = v0)
+      currentId = genId();                  // Import = NEUE Beurteilung, überschreibt keine bestehende
+      applyData(clone(BLANK_STATE));        // auf Standard zurücksetzen ...
+      applyData(rest);                      // ... dann importierte Werte einspielen
+      const ok = await saveData(false);
+      showEditor();
+      toast(ok ? 'Importiert – als neue Beurteilung angelegt.' : 'Importiert, aber Speichern fehlgeschlagen.');
     } catch (e) {
       alert('Die Datei konnte nicht importiert werden. Bitte JSON-Datei prüfen.');
     }
@@ -249,41 +379,39 @@ function toast(message) {
   toastTimer = setTimeout(() => el.hidden = true, 1800);
 }
 
-function init() {
+async function init() {
   renderAlternatives();
   renderHazards();
   renderChecklist('rescueChecklist', rescue, 'rescue');
   renderChecklist('equipmentChecklist', equipment, 'equipment');
   renderChecklist('stopChecklist', stops, 'stop');
   renderChecklist('briefingChecklist', briefing, 'briefing');
-  loadData();
+  BLANK_STATE = collectData();   // Standardzustand (leere Felder + Default-Maßnahmen) erfassen
   updateRisks();
   updateProgress();
 
   document.body.addEventListener('input', e => {
-    if (e.target.matches('[data-field]')) {
-      updateRisks();
-      updateProgress();
-      saveData(false);
-    }
+    if (e.target.matches('[data-field]')) { updateRisks(); updateProgress(); autoSave(); }
   });
   document.body.addEventListener('change', e => {
-    if (e.target.matches('[data-field]')) {
-      updateRisks();
-      updateProgress();
-      saveData(false);
-    }
+    if (e.target.matches('[data-field]')) { updateRisks(); updateProgress(); autoSave(); }
   });
   document.getElementById('saveBtn').addEventListener('click', () => saveData(true));
-  document.getElementById('printBtn').addEventListener('click', () => { saveData(false); window.print(); });
+  document.getElementById('printBtn').addEventListener('click', async () => { await saveData(false); window.print(); });
   document.getElementById('exportBtn').addEventListener('click', exportJson);
   document.getElementById('importFile').addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
+  document.getElementById('newBtn').addEventListener('click', newBeurteilung);
+  document.getElementById('toArchiveBtn').addEventListener('click', showArchive);
   document.getElementById('resetBtn').addEventListener('click', () => {
-    if (confirm('Wirklich alle Eingaben löschen?')) {
-      localStorage.removeItem(STORAGE_KEY);
-      location.reload();
+    if(!currentId) return;
+    if (confirm('Alle Eingaben in DIESER Beurteilung wirklich löschen? (Andere Beurteilungen im Archiv bleiben erhalten.)')) {
+      applyData(clone(BLANK_STATE)); setField('datum', today()); saveData(false);
     }
   });
+
+  try{ await openDB(); await migrateFromLocalStorage(); }
+  catch(err){ console.error('IndexedDB nicht verfügbar:', err); }
+  showArchive();
 }
 
 init();

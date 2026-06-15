@@ -130,6 +130,14 @@ textarea { resize: vertical; }
 .signatures span { display: block; height: 64px; border-bottom: 1px solid #111; }
 .signatures p { margin: 8px 0 0; color: var(--muted); }
 .only-print { display: none; }
+.archiv-view { padding: 24px; max-width: 1180px; margin: 0 auto; width: 100%; }
+#newBtn { margin-bottom: 14px; }
+.archiv-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+.archiv-item.current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(31,111,235,.15); }
+.archiv-meta { font-size: 15px; } .archiv-meta b { font-size: 16px; }
+.archiv-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.archiv-actions .danger-inline { background: #fee4e2; color: var(--danger); }
+.pill { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: #f9fafb; font-size: 12px; color: #374151; }
 @media (max-width: 880px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; }
