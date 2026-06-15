@@ -3,41 +3,61 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Baustellen-Dokumentation</title>
+  <title>Climbing World · Baustellen-Dokumentation</title>
   <meta name="description" content="Offline-Tools für die Baustelle: Gefährdungsbeurteilung und Bau-Tagesbericht. Alle Daten bleiben lokal im Browser." />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#1f4f82" />
+  <meta name="theme-color" content="#1b1c20" />
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#f4f6f8; --card:#fff; --text:#17202a; --muted:#667085; --line:#d7dde5;
-      --primary:#1f4f82; --accent:#1f6feb; --radius:16px;
+      --bg:#f5f6f7; --card:#fff; --line:#e7e8ea; --line2:#e0e1e4;
+      --ink:#16181d; --muted:#8a8e93; --muted2:#9a9ea3;
+      --accent:#FFE600; --dark:#1b1c20; --dark2:#26272c;
+      --mono:'IBM Plex Mono',ui-monospace,monospace;
+      --head:'Saira Condensed','Arial Narrow',system-ui,sans-serif;
+      --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
-    header{background:linear-gradient(135deg,var(--primary),#0f172a);color:#fff;padding:40px 20px}
-    .wrap{max-width:900px;margin:0 auto}
-    header h1{margin:0 0 8px;font-size:30px}
-    header p{margin:0;color:#dbeafe}
-    main{max-width:900px;margin:28px auto;padding:0 20px 60px}
+    body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+    header{background:var(--dark);color:#fff;padding:46px 20px 40px;border-bottom:4px solid var(--accent)}
+    .wrap{max-width:960px;margin:0 auto}
+    .brandline{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+    .brandline .badge{width:40px;height:40px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--head);font-weight:800;font-size:19px;color:var(--ink)}
+    .brandline .bn{font-family:var(--head);font-weight:700;font-size:20px;letter-spacing:.5px}
+    .brandline .bl{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--accent)}
+    .kicker{font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+    header h1{margin:0 0 10px;font-family:var(--head);font-weight:700;font-size:38px;line-height:1.02;letter-spacing:.5px}
+    header p{margin:0;color:#c7cace;max-width:560px;font-size:15px}
+    main{max-width:960px;margin:30px auto;padding:0 20px 60px}
     .tools{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
-    .tool{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-      box-shadow:0 6px 18px rgba(15,23,42,.06);padding:22px;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s}
-    .tool:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.12)}
-    .tool .badge{display:inline-block;width:48px;height:48px;border-radius:12px;margin-bottom:12px}
-    .tool h2{margin:0 0 6px;font-size:20px}
-    .tool p{margin:0;color:var(--muted);font-size:15px}
-    .note{margin-top:26px;background:#eef2f7;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;color:#374151;font-size:15px}
-    footer{max-width:900px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:13px}
-    @media(max-width:680px){.tools{grid-template-columns:1fr}}
+    .tool{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(16,18,25,.04);padding:24px;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s,border-color .12s}
+    .tool:hover{transform:translateY(-2px);box-shadow:0 16px 34px -22px rgba(15,18,25,.5);border-color:var(--accent)}
+    .tool .badge{width:52px;height:52px;border-radius:13px;margin-bottom:14px;display:block}
+    .tool .no{font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--muted2);margin-bottom:6px}
+    .tool h2{margin:0 0 8px;font-family:var(--head);font-weight:600;font-size:22px}
+    .tool p{margin:0 0 16px;color:var(--muted);font-size:14.5px;flex:1}
+    .tool .go{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;background:var(--accent);color:var(--ink);font-family:var(--head);font-weight:700;font-size:13px;letter-spacing:.4px;padding:9px 14px;border-radius:9px}
+    .note{margin-top:24px;background:var(--dark);color:#e7e8ea;border-radius:16px;padding:18px 20px;font-size:14.5px;display:flex;gap:12px;align-items:flex-start}
+    .note .lock{width:30px;height:30px;flex-shrink:0;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px}
+    .note strong{color:#fff}
+    footer{max-width:960px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-family:var(--mono);font-size:12px}
+    @media(max-width:680px){.tools{grid-template-columns:1fr}header h1{font-size:30px}}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <h1>Baustellen-Dokumentation</h1>
-      <p>Zwei Offline-Werkzeuge für Sicherheit und Tagesdoku auf der Baustelle.</p>
+      <div class="brandline">
+        <div class="badge">CW</div>
+        <div><div class="bn">CLIMBING WORLD</div><div class="bl">BAUSTELLEN-DOKU</div></div>
+      </div>
+      <div class="kicker">Baustellen-Dokumentation</div>
+      <h1>Werkzeuge für Sicherheit &amp; Tagesdoku</h1>
+      <p>Zwei eigenständige Offline-Werkzeuge für die Baustelle – direkt im Browser, ohne Server.</p>
     </div>
   </header>
 
@@ -45,23 +65,28 @@
     <div class="tools">
       <a class="tool" href="gefaehrdungsbeurteilung/">
         <img class="badge" src="gefaehrdungsbeurteilung/icons/icon.svg" alt="" />
+        <div class="no">01</div>
         <h2>Gefährdungsbeurteilung</h2>
-        <p>Industrieklettern im Hochregallager: Gefährdungen, Maßnahmen, Rettungskonzept und Freigabe.</p>
+        <p>Industrieklettern im Hochregallager: Gefährdungen, Maßnahmen, Rettungskonzept und Freigabe – mit Archiv und Backup.</p>
+        <span class="go">Öffnen →</span>
       </a>
       <a class="tool" href="tagesbericht/">
         <img class="badge" src="tagesbericht/icons/icon.svg" alt="" />
+        <div class="no">02</div>
         <h2>Bau-Tagesbericht</h2>
-        <p>Tagesberichte erfassen, Fotos anhängen, exportieren und drucken.</p>
+        <p>Tagesberichte erfassen, Fotos anhängen, exportieren und drucken – mit Archiv, Stammdaten-Übernahme und Backup.</p>
+        <span class="go">Öffnen →</span>
       </a>
     </div>
 
     <div class="note">
-      🔒 <strong>Alle Daten bleiben lokal im Browser.</strong> Es werden keine Daten an Server
-      übertragen. Beide Tools laufen offline und lassen sich auf dem Handy installieren.
+      <span class="lock">🔒</span>
+      <div><strong>Alle Daten bleiben lokal im Browser.</strong> Es werden keine Daten an Server übertragen.
+      Beide Tools laufen offline und lassen sich auf dem Handy installieren.</div>
     </div>
   </main>
 
-  <footer>© 2026 Laura Sauer · MIT-Lizenz</footer>
+  <footer>© 2026 Laura Sauer · MIT-Lizenz · Climbing World</footer>
 
   <script>
     // Service Worker registrieren (relativer Pfad → funktioniert auch unter /baustellen-doku/).
